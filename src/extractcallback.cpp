@@ -182,14 +182,11 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
 
 STDMETHODIMP CArchiveExtractCallback::PrepareOperation(Int32 askExtractMode)
 {
+  if (m_Canceled) {
+    return E_ABORT;
+  }
   m_ExtractMode = askExtractMode == NArchive::NExtract::NAskMode::kExtract;
 
-/*  switch (askExtractMode) {
-    case NArchive::NExtract::NAskMode::kExtract:  PrintString(kExtractingString); break;
-    case NArchive::NExtract::NAskMode::kTest:  PrintString(kTestingString); break;
-    case NArchive::NExtract::NAskMode::kSkip:  PrintString(kSkippingString); break;
-  };
-  PrintString(_filePath);*/
   return S_OK;
 }
 

@@ -95,6 +95,7 @@ void FileDataImpl::setOutputFileName(LPCWSTR fileName)
   m_OutputFileName = fileName;
 }
 
+
 LPCWSTR FileDataImpl::getOutputFileName() const
 {
   return m_OutputFileName.c_str();
@@ -157,7 +158,6 @@ private:
   NWindows::NDLL::CLibrary *m_Library;
   UString m_ArchiveName;
   CMyComPtr<IInArchive> m_ArchivePtr;
-//  CMyComPtr<IArchiveExtractCallback> m_ExtractCallback;
   CArchiveExtractCallback *m_ExtractCallback;
 
   std::vector<FileData*> m_FileList;
@@ -327,7 +327,7 @@ bool ArchiveImpl::getFileList(FileData* const *&data, size_t &size)
 bool ArchiveImpl::extract(LPCTSTR outputDirectory, ProgressCallback* progressCallback,
                           FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback)
 {
-  m_ExtractCallback = new CArchiveExtractCallback(progressCallback,fileChangeCallback, errorCallback);
+  m_ExtractCallback = new CArchiveExtractCallback(progressCallback, fileChangeCallback, errorCallback);
   CMyComPtr<IArchiveExtractCallback> extractCallback = m_ExtractCallback;
   m_ExtractCallback->Init(m_ArchivePtr, GetUnicodeString(outputDirectory), &m_FileList[0], m_Password);
   HRESULT result = m_ArchivePtr->Extract(NULL, (UInt32)(Int32)(-1), false, extractCallback);
