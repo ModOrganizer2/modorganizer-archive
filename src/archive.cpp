@@ -67,7 +67,7 @@ DEFINE_GUID(CLSID_CFormat7z,
 class FileDataImpl : public FileData {
   friend class Archive;
 public:
-  FileDataImpl(const std::wstring &fileName, bool isDirectory);
+  FileDataImpl(const std::wstring &fileName, UInt64 crc, bool isDirectory);
 
   virtual LPCWSTR getFileName() const;
   virtual void setSkip(bool skip) { m_Skip = skip; }
@@ -75,10 +75,12 @@ public:
   virtual void setOutputFileName(LPCWSTR fileName);
   virtual LPCWSTR getOutputFileName() const;
   virtual bool isDirectory() const { return m_IsDirectory; }
+  virtual UInt64 getCRC() const;
 
 private:
   std::wstring m_FileName;
   std::wstring m_OutputFileName;
+  UInt64 m_CRC;
   bool m_Skip;
   bool m_IsDirectory;
 };
@@ -101,9 +103,13 @@ LPCWSTR FileDataImpl::getOutputFileName() const
   return m_OutputFileName.c_str();
 }
 
+UInt64 FileDataImpl::getCRC() const {
+  return m_CRC;
+}
 
-FileDataImpl::FileDataImpl(const std::wstring& fileName, bool isDirectory)
-  : m_FileName(fileName), m_OutputFileName(fileName), m_Skip(false), m_IsDirectory(isDirectory)
+
+FileDataImpl::FileDataImpl(const std::wstring &fileName, UInt64 crc, bool isDirectory)
+  : m_FileName(fileName), m_OutputFileName(fileName), m_CRC(crc), m_Skip(false), m_IsDirectory(isDirectory)
 {
 }
 
@@ -308,9 +314,14 @@ void ArchiveImpl::resetFileList()
     NWindows::NCOM::CPropVariant prop;
     m_ArchivePtr->GetProperty(i, kpidPath, &prop);
     UString fileName = ConvertPropVariantToString(prop);
+    m_ArchivePtr->GetProperty(i, kpidCRC, &prop);
+    UInt64 crc = 0LL;
+    if (prop.vt != VT_EMPTY) {
+      crc = ConvertPropVariantToUInt64(prop);
+    }
     bool isDirectory = false;
     IsArchiveItemProp(m_ArchivePtr, i, kpidIsDir, isDirectory);
-    m_FileList.push_back(new FileDataImpl(std::wstring(fileName), isDirectory));
+    m_FileList.push_back(new FileDataImpl(std::wstring(fileName), crc, isDirectory));
   }
 }
 
