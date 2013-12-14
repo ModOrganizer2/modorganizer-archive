@@ -10,39 +10,39 @@ QT       -= core gui
 TEMPLATE = lib
 
 SOURCES += archive.cpp \
-    ../../../7zip/CPP/Windows/DLL.cpp \
-    ../../../7zip/CPP/Windows/FileIO.cpp \
-    ../../../7zip/CPP/7zip/Common/FileStreams.cpp \
-    ../../../7zip/CPP/Windows/FileFind.cpp \
-    ../../../7zip/CPP/Common/MyVector.cpp \
-    ../../../7zip/CPP/Common/MyString.cpp \
+    "$(7ZIPPATH)/CPP/Windows/DLL.cpp" \
+    "$(7ZIPPATH)/CPP/Windows/FileIO.cpp" \
+    "$(7ZIPPATH)/CPP/7zip/Common/FileStreams.cpp" \
+    "$(7ZIPPATH)/CPP/Windows/FileFind.cpp" \
+    "$(7ZIPPATH)/CPP/Common/MyVector.cpp" \
+    "$(7ZIPPATH)/CPP/Common/MyString.cpp" \
     StdAfx.cpp \
-    ../../../7zip/CPP/Common/StringConvert.cpp \
-    ../../../7zip/CPP/Windows/PropVariantConversions.cpp \
-    ../../../7zip/CPP/Windows/PropVariant.cpp \
-    ../../../7zip/CPP/Common/IntToString.cpp \
-    ../../../7zip/CPP/Windows/FileDir.cpp \
-    ../../../7zip/CPP/Windows/FileName.cpp \
+    "$(7ZIPPATH)/CPP/Common/StringConvert.cpp" \
+    "$(7ZIPPATH)/CPP/Windows/PropVariantConversions.cpp" \
+    "$(7ZIPPATH)/CPP/Windows/PropVariant.cpp" \
+    "$(7ZIPPATH)/CPP/Common/IntToString.cpp" \
+    "$(7ZIPPATH)/CPP/Windows/FileDir.cpp" \
+    "$(7ZIPPATH)/CPP/Windows/FileName.cpp" \
     extractcallback.cpp \
     callback.cpp \
     opencallback.cpp
 
 
 HEADERS += archive.h\
-    ../../../7zip/CPP/7zip/Common/FileStreams.h \
+    "$(7ZIPPATH)/CPP/7zip/Common/FileStreams.h" \
     StdAfx.h \
-    ../../../7zip/CPP/Common/MyVector.h \
-    ../../../7zip/CPP/Common/MyString.h \
-    ../../../7zip/CPP/Windows/FileIO.h \
-    ../../../7zip/CPP/Windows/FileFind.h \
-    ../../../7zip/CPP/Windows/DLL.h \
-    ../../../7zip/CPP/Common/StringConvert.h \
-    ../../../7zip/CPP/Windows/PropVariantConversions.h \
-    ../../../7zip/CPP/Windows/PropVariant.h \
-    ../../../7zip/CPP/Common/IntToString.h \
-    ../../../7zip/CPP/Common/MyCom.h \
-    ../../../7zip/CPP/Windows/FileDir.h \
-    ../../../7zip/CPP/Windows/FileName.h \
+    "$(7ZIPPATH)/CPP/Common/MyVector.h" \
+    "$(7ZIPPATH)/CPP/Common/MyString.h" \
+    "$(7ZIPPATH)/CPP/Windows/FileIO.h" \
+    "$(7ZIPPATH)/CPP/Windows/FileFind.h" \
+    "$(7ZIPPATH)/CPP/Windows/DLL.h" \
+    "$(7ZIPPATH)/CPP/Common/StringConvert.h" \
+    "$(7ZIPPATH)/CPP/Windows/PropVariantConversions.h" \
+    "$(7ZIPPATH)/CPP/Windows/PropVariant.h" \
+    "$(7ZIPPATH)/CPP/Common/IntToString.h" \
+    "$(7ZIPPATH)/CPP/Common/MyCom.h" \
+    "$(7ZIPPATH)/CPP/Windows/FileDir.h" \
+    "$(7ZIPPATH)/CPP/Windows/FileName.h" \
     extractcallback.h \
     callback.h \
     opencallback.h
