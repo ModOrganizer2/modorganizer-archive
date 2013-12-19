@@ -10,39 +10,39 @@ QT       -= core gui
 TEMPLATE = lib
 
 SOURCES += archive.cpp \
-    "$(7ZIPPATH)/CPP/Windows/DLL.cpp" \
-    "$(7ZIPPATH)/CPP/Windows/FileIO.cpp" \
-    "$(7ZIPPATH)/CPP/7zip/Common/FileStreams.cpp" \
-    "$(7ZIPPATH)/CPP/Windows/FileFind.cpp" \
-    "$(7ZIPPATH)/CPP/Common/MyVector.cpp" \
-    "$(7ZIPPATH)/CPP/Common/MyString.cpp" \
+    "$(SEVENZIPPATH)/CPP/Windows/DLL.cpp" \
+    "$(SEVENZIPPATH)/CPP/Windows/FileIO.cpp" \
+    "$(SEVENZIPPATH)/CPP/7zip/Common/FileStreams.cpp" \
+    "$(SEVENZIPPATH)/CPP/Windows/FileFind.cpp" \
+    "$(SEVENZIPPATH)/CPP/Common/MyVector.cpp" \
+    "$(SEVENZIPPATH)/CPP/Common/MyString.cpp" \
     StdAfx.cpp \
-    "$(7ZIPPATH)/CPP/Common/StringConvert.cpp" \
-    "$(7ZIPPATH)/CPP/Windows/PropVariantConversions.cpp" \
-    "$(7ZIPPATH)/CPP/Windows/PropVariant.cpp" \
-    "$(7ZIPPATH)/CPP/Common/IntToString.cpp" \
-    "$(7ZIPPATH)/CPP/Windows/FileDir.cpp" \
-    "$(7ZIPPATH)/CPP/Windows/FileName.cpp" \
+    "$(SEVENZIPPATH)/CPP/Common/StringConvert.cpp" \
+    "$(SEVENZIPPATH)/CPP/Windows/PropVariantConversions.cpp" \
+    "$(SEVENZIPPATH)/CPP/Windows/PropVariant.cpp" \
+    "$(SEVENZIPPATH)/CPP/Common/IntToString.cpp" \
+    "$(SEVENZIPPATH)/CPP/Windows/FileDir.cpp" \
+    "$(SEVENZIPPATH)/CPP/Windows/FileName.cpp" \
     extractcallback.cpp \
     callback.cpp \
     opencallback.cpp
 
 
 HEADERS += archive.h\
-    "$(7ZIPPATH)/CPP/7zip/Common/FileStreams.h" \
+    "$(SEVENZIPPATH)/CPP/7zip/Common/FileStreams.h" \
     StdAfx.h \
-    "$(7ZIPPATH)/CPP/Common/MyVector.h" \
-    "$(7ZIPPATH)/CPP/Common/MyString.h" \
-    "$(7ZIPPATH)/CPP/Windows/FileIO.h" \
-    "$(7ZIPPATH)/CPP/Windows/FileFind.h" \
-    "$(7ZIPPATH)/CPP/Windows/DLL.h" \
-    "$(7ZIPPATH)/CPP/Common/StringConvert.h" \
-    "$(7ZIPPATH)/CPP/Windows/PropVariantConversions.h" \
-    "$(7ZIPPATH)/CPP/Windows/PropVariant.h" \
-    "$(7ZIPPATH)/CPP/Common/IntToString.h" \
-    "$(7ZIPPATH)/CPP/Common/MyCom.h" \
-    "$(7ZIPPATH)/CPP/Windows/FileDir.h" \
-    "$(7ZIPPATH)/CPP/Windows/FileName.h" \
+    "$(SEVENZIPPATH)/CPP/Common/MyVector.h" \
+    "$(SEVENZIPPATH)/CPP/Common/MyString.h" \
+    "$(SEVENZIPPATH)/CPP/Windows/FileIO.h" \
+    "$(SEVENZIPPATH)/CPP/Windows/FileFind.h" \
+    "$(SEVENZIPPATH)/CPP/Windows/DLL.h" \
+    "$(SEVENZIPPATH)/CPP/Common/StringConvert.h" \
+    "$(SEVENZIPPATH)/CPP/Windows/PropVariantConversions.h" \
+    "$(SEVENZIPPATH)/CPP/Windows/PropVariant.h" \
+    "$(SEVENZIPPATH)/CPP/Common/IntToString.h" \
+    "$(SEVENZIPPATH)/CPP/Common/MyCom.h" \
+    "$(SEVENZIPPATH)/CPP/Windows/FileDir.h" \
+    "$(SEVENZIPPATH)/CPP/Windows/FileName.h" \
     extractcallback.h \
     callback.h \
     opencallback.h

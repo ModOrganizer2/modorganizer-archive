@@ -276,7 +276,11 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
 
 bool ArchiveImpl::close()
 {
-  return m_ArchivePtr->Close() == S_OK;
+  if (m_ArchivePtr != NULL) {
+    return m_ArchivePtr->Close() == S_OK;
+  } else {
+    return true;
+  }
 }
 
 
