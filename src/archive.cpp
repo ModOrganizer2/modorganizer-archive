@@ -47,7 +47,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 #include <vector>
 
-
 using namespace NWindows;
 
 
@@ -61,6 +60,8 @@ DEFINE_GUID(CLSID_CFormatRar,
   0x23170F69, 0x40C1, 0x278A, 0x10, 0x00, 0x00, 0x01, 0x10, 0x03, 0x00, 0x00);
 DEFINE_GUID(CLSID_CFormat7z,
   0x23170F69, 0x40C1, 0x278A, 0x10, 0x00, 0x00, 0x01, 0x10, 0x07, 0x00, 0x00);
+DEFINE_GUID(CLSID_CFormatSplit,
+  0x23170f69, 0x40c1, 0x278A, 0x10, 0x00, 0x00, 0x01, 0x10, 0xea, 0x00, 0x00);
 
 
 
@@ -197,13 +198,38 @@ ArchiveImpl::~ArchiveImpl()
 }
 
 
+std::wstring GetArchiveItemPath(IInArchive *archive, UInt32 index)
+{
+  NWindows::NCOM::CPropVariant prop;
+  if (archive->GetProperty(index, kpidPath, &prop) != S_OK) {
+    throw std::runtime_error("failed to retrieve kpidPath");
+  }
+  if(prop.vt == VT_BSTR) {
+    return prop.bstrVal;
+  } else if (prop.vt == VT_EMPTY) {
+    return std::wstring();
+  } else {
+    throw std::runtime_error("failed to retrieve item path");
+  }
+}
+
 bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
 {
   m_LastError = ERROR_NONE;
-  m_ArchiveName = GetUnicodeString(archiveName);
+
+  UString normalizedName = archiveName;
+  normalizedName.Trim();
+  int fileNamePartStartIndex;
+  NFile::NDirectory::MyGetFullPathName(normalizedName, m_ArchiveName, fileNamePartStartIndex);
+
   NFile::NFind::CFileInfoW fileInfo;
   if (!fileInfo.Find(m_ArchiveName)) {
     m_ArchiveName = L"";
+    m_LastError = ERROR_ARCHIVE_NOT_FOUND;
+    return false;
+  }
+
+  if (fileInfo.IsDir()) {
     m_LastError = ERROR_ARCHIVE_NOT_FOUND;
     return false;
   }
@@ -223,13 +249,17 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
   // actually open the archive
   CArchiveOpenCallback *openCallback = new CArchiveOpenCallback(passwordCallback);
 
-  CMyComPtr<IArchiveOpenCallback> openCallbackPtr(openCallback);
+  openCallback->LoadFileInfo(m_ArchiveName.Left(fileNamePartStartIndex),
+                             m_ArchiveName.Mid(fileNamePartStartIndex));
 
+  CMyComPtr<IArchiveOpenCallback> openCallbackPtr(openCallback);
 
   // determine archive type based on extension
   int extensionPos = m_ArchiveName.ReverseFind(L'.');
   UString extension = m_ArchiveName.Mid(extensionPos + 1);
+
   extension.MakeLower();
+
   if (extension == L"7z") {
     formatIdentifier = &CLSID_CFormat7z;
   } else if (extension == L"zip") {
@@ -240,14 +270,13 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
 
   if (formatIdentifier == NULL) {
     // need to try different format identifiers
-    const GUID *identifiers[] = { &CLSID_CFormat7z, &CLSID_CFormatZip, &CLSID_CFormatRar, NULL };
+    const GUID *identifiers[] = { &CLSID_CFormatSplit, &CLSID_CFormat7z, &CLSID_CFormatZip, &CLSID_CFormatRar, NULL };
     HRESULT res = S_FALSE;
     for (int i = 0; identifiers[i] != NULL && res != S_OK; ++i) {
       if (CreateObjectFunc(identifiers[i], &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
         m_LastError = ERROR_LIBRARY_ERROR;
       }
-      res = m_ArchivePtr->Open(file, 0, openCallbackPtr);
-      if (res != S_OK) {
+      if ((res = m_ArchivePtr->Open(file, 0, openCallbackPtr)) != S_OK) {
         m_ArchivePtr.Release();
       }
     }
@@ -268,6 +297,28 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
   }
 
   m_Password = openCallback->GetPassword();
+/*
+  UInt32 subFile = ULONG_MAX;
+  {
+    NCOM::CPropVariant prop;
+    if (m_ArchivePtr->GetArchiveProperty(kpidMainSubfile, &prop) != S_OK) {
+      throw std::runtime_error("failed to get property kpidMainSubfile");
+    }
+
+    if (prop.vt == VT_UI4) {
+      subFile = prop.ulVal;
+    }
+  }
+
+  if (subFile != ULONG_MAX) {
+    std::wstring subPath = GetArchiveItemPath(m_ArchivePtr, subFile);
+
+    CMyComPtr<IArchiveOpenSetSubArchiveName> setSubArchiveName;
+    openCallbackPtr.QueryInterface(IID_IArchiveOpenSetSubArchiveName, (void **)&setSubArchiveName);
+    if (setSubArchiveName) {
+      setSubArchiveName->SetSubArchiveName(subPath.c_str());
+    }
+  }*/
 
   resetFileList();
   return true;
@@ -305,6 +356,7 @@ static HRESULT IsArchiveItemProp(IInArchive *archive, UInt32 index, PROPID propI
     return E_FAIL;
   return S_OK;
 }
+
 
 
 void ArchiveImpl::resetFileList()

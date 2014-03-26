@@ -27,34 +27,52 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 #include "7zip/Common/FileStreams.h"
+#include "Windows/FileFind.h"
 #include "callback.h"
+#include <stdexcept>
 
 
 class CArchiveOpenCallback: public IArchiveOpenCallback,
+                            public IArchiveOpenVolumeCallback,
                             public ICryptoGetTextPassword,
+                            public IArchiveOpenSetSubArchiveName,
                             public CMyUnknownImp
 {
 
 public:
 
-  CArchiveOpenCallback(PasswordCallback* passwordCallback)
-    : m_PasswordCallback(passwordCallback) {}
+  MY_UNKNOWN_IMP3(
+    IArchiveOpenVolumeCallback,
+    ICryptoGetTextPassword,
+    IArchiveOpenSetSubArchiveName
+  )
+
+  CArchiveOpenCallback(PasswordCallback* passwordCallback);
 
   ~CArchiveOpenCallback() { delete m_PasswordCallback; }
 
-  MY_UNKNOWN_IMP1(ICryptoGetTextPassword)
-
-  STDMETHOD(SetTotal)(const UInt64 *files, const UInt64 *bytes);
-  STDMETHOD(SetCompleted)(const UInt64 *files, const UInt64 *bytes);
+  INTERFACE_IArchiveOpenCallback(;)
+  INTERFACE_IArchiveOpenVolumeCallback(;)
 
   STDMETHOD(CryptoGetTextPassword)(BSTR *password);
+  STDMETHOD(SetSubArchiveName)(const wchar_t *name);
+
+  void LoadFileInfo(const UString &path, const UString &fileName);
 
   UString GetPassword() const { return m_Password; }
 
 private:
 
-  PasswordCallback* m_PasswordCallback;
+  PasswordCallback *m_PasswordCallback;
   UString m_Password;
+
+  UString m_Path;
+  UString m_FileName;
+
+  bool m_SubArchiveMode;
+  std::wstring m_SubArchiveName;
+
+  NWindows::NFile::NFind::CFileInfoW m_FileInfo;
 
 };
 

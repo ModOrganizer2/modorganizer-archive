@@ -22,13 +22,28 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "opencallback.h"
 #include "Common/StringConvert.h"
 #include "Windows/FileDir.h"
-#include "Windows/FileFind.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConversions.h"
 #include <string>
 
 
 #define UNUSED(x)
+
+
+CArchiveOpenCallback::CArchiveOpenCallback(PasswordCallback *passwordCallback)
+  : m_PasswordCallback(passwordCallback)
+  , m_SubArchiveMode(false)
+{
+
+}
+
+void CArchiveOpenCallback::LoadFileInfo(const UString &path, const UString &fileName)
+{
+  m_Path = path;
+  if (!m_FileInfo.Find(path + fileName)) {
+    throw std::runtime_error("invalid archive path");
+  }
+}
 
 
 STDMETHODIMP CArchiveOpenCallback::SetTotal(const UInt64 *UNUSED(files), const UInt64 *UNUSED(bytes))
@@ -56,3 +71,63 @@ STDMETHODIMP CArchiveOpenCallback::CryptoGetTextPassword(BSTR* passwordOut)
     return E_ABORT;
   }
 }
+
+STDMETHODIMP CArchiveOpenCallback::SetSubArchiveName(const wchar_t *name)
+{
+  m_SubArchiveMode = true;
+  m_SubArchiveName = name;
+  return  S_OK;
+}
+
+STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT *value)
+{
+  NWindows::NCOM::CPropVariant prop;
+  if (propID == kpidIsAnti) {
+    prop = false;
+    prop.Detach(value);
+    return S_OK;
+  }
+
+  switch(propID) {
+    case kpidPath: prop = m_FileInfo.Name; break;
+    case kpidName: {
+      if (m_SubArchiveMode) {
+        prop = m_SubArchiveName.c_str();
+      } else {
+        prop = m_FileInfo.Name;
+      }
+    } break;
+    case kpidIsDir: prop = m_FileInfo.IsDir(); break;
+    case kpidSize: prop = m_FileInfo.Size; break;
+    case kpidAttrib: prop = (UINT32)m_FileInfo.Attrib; break;
+    case kpidCTime: prop = m_FileInfo.CTime; break;
+    case kpidATime: prop = m_FileInfo.ATime; break;
+    case kpidMTime: prop = m_FileInfo.MTime; break;
+  }
+
+  prop.Detach(value);
+  return S_OK;
+}
+
+STDMETHODIMP CArchiveOpenCallback::GetStream(const wchar_t *name, IInStream **inStream)
+{
+  *inStream = NULL;
+
+  UString fullPath = m_Path + name;
+  if (!m_FileInfo.Find(fullPath)) {
+    return S_FALSE;
+  }
+
+  if (m_FileInfo.IsDir()) {
+    return S_FALSE;
+  }
+
+  CInFileStream *inFile = new CInFileStream;
+  CMyComPtr<IInStream> inStreamTemp = inFile;
+  if (!inFile->Open(fullPath)) {
+    return ::GetLastError();
+  }
+  *inStream = inStreamTemp.Detach();
+  return S_OK;
+}
+
