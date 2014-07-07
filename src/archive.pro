@@ -48,7 +48,15 @@ HEADERS += archive.h\
     opencallback.h
 
 
-INCLUDEPATH += ../../../7zip/CPP
+OTHER_FILES += \
+    version.rc
+
+
+RC_FILE += \
+    version.rc
+
+
+INCLUDEPATH += "$(SEVENZIPPATH)/CPP"
 
 PRECOMPILED_HEADER = stdafx.h
 
@@ -58,25 +66,19 @@ LIBS += -lkernel32 -luser32 -loleaut32
 
 
 CONFIG(release, debug|release) {
-    QMAKE_CXXFLAGS += /Zi
-    QMAKE_LFLAGS += /DEBUG
+  QMAKE_CXXFLAGS += /Zi
+  QMAKE_LFLAGS += /DEBUG
 }
 
 CONFIG(debug, debug|release) {
-	SRCDIR = $$OUT_PWD/debug
-	DSTDIR = $$PWD/../../outputd
+  SRCDIR = $$OUT_PWD/debug
+  DSTDIR = $$PWD/../../outputd
 } else {
-	SRCDIR = $$OUT_PWD/release
-	DSTDIR = $$PWD/../../output
+  SRCDIR = $$OUT_PWD/release
+  DSTDIR = $$PWD/../../output
 }
 
 SRCDIR ~= s,/,$$QMAKE_DIR_SEP,g
 DSTDIR ~= s,/,$$QMAKE_DIR_SEP,g
 
 QMAKE_POST_LINK += xcopy /y /I $$quote($$SRCDIR\\archive*.dll) $$quote($$DSTDIR\\dlls) $$escape_expand(\\n)
-
-OTHER_FILES += \
-    version.rc
-
-RC_FILE += \
-    version.rc
