@@ -64,6 +64,8 @@ public:
 
 public:
 
+  virtual ~Archive() {}
+
   virtual bool isValid() const = 0;
 
   virtual Error getLastError() const = 0;
