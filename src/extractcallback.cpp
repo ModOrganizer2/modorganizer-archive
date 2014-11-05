@@ -226,6 +226,13 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
 
 STDMETHODIMP CArchiveExtractCallback::CryptoGetTextPassword(BSTR *passwordOut)
 {
+  if (m_Password.IsEmpty() && (m_PasswordCallback != NULL)) {
+    char* passwordBuffer = new char[MAX_PASSWORD_LENGTH + 1];
+    memset(passwordBuffer, '\0', MAX_PASSWORD_LENGTH + 1);
+    (*m_PasswordCallback)(passwordBuffer);
+    m_Password = GetUnicodeString(passwordBuffer);
+  }
+
   // reuse the password entered on opening, we don't ask the user twice
   return StringToBstr(m_Password, passwordOut);
 }

@@ -41,9 +41,16 @@ class CArchiveExtractCallback: public IArchiveExtractCallback,
 public:
 
   CArchiveExtractCallback(ProgressCallback *progressCallback,
-                          FileChangeCallback *fileChangeCallback, ErrorCallback *errorCallback)
-    : m_Canceled(false), m_FileData(NULL), m_ProgressCallback(progressCallback),
-      m_FileChangeCallback(fileChangeCallback), m_ErrorCallback(errorCallback) {}
+                          FileChangeCallback *fileChangeCallback,
+                          ErrorCallback *errorCallback,
+                          PasswordCallback *passwordCallback)
+    : m_Canceled(false)
+    , m_FileData(NULL)
+    , m_ProgressCallback(progressCallback)
+    , m_FileChangeCallback(fileChangeCallback)
+    , m_ErrorCallback(errorCallback)
+    , m_PasswordCallback(passwordCallback)
+  {}
 
   virtual ~CArchiveExtractCallback() { delete m_ProgressCallback; delete m_FileChangeCallback; delete m_ErrorCallback; }
 
@@ -101,6 +108,7 @@ private:
   ProgressCallback *m_ProgressCallback;
   FileChangeCallback *m_FileChangeCallback;
   ErrorCallback *m_ErrorCallback;
+  PasswordCallback *m_PasswordCallback;
 
 };
 

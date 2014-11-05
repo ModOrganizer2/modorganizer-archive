@@ -167,6 +167,8 @@ private:
   CMyComPtr<IInArchive> m_ArchivePtr;
   CArchiveExtractCallback *m_ExtractCallback;
 
+  PasswordCallback *m_PasswordCallback;
+
   std::vector<FileData*> m_FileList;
 
   UString m_Password;
@@ -175,7 +177,7 @@ private:
 
 
 ArchiveImpl::ArchiveImpl()
-  : m_Valid(true), m_LastError(ERROR_NONE), m_Library(new NWindows::NDLL::CLibrary)
+  : m_Valid(true), m_LastError(ERROR_NONE), m_Library(new NWindows::NDLL::CLibrary), m_PasswordCallback(NULL)
 {
   if (!m_Library->Load(DLLName)) {
     m_LastError = ERROR_LIBRARY_NOT_FOUND;
@@ -194,6 +196,7 @@ ArchiveImpl::~ArchiveImpl()
 {
   clearFileList();
   m_ArchivePtr.Release();
+  delete m_PasswordCallback;
   delete m_Library;
 }
 
@@ -216,6 +219,9 @@ std::wstring GetArchiveItemPath(IInArchive *archive, UInt32 index)
 bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
 {
   m_LastError = ERROR_NONE;
+  // in rars the password seems to be requested during extraction, not on open, so we need to hold on
+  // to the callback for now
+  m_PasswordCallback = passwordCallback;
 
   UString normalizedName = archiveName;
   normalizedName.Trim();
@@ -390,11 +396,10 @@ bool ArchiveImpl::getFileList(FileData* const *&data, size_t &size)
 }
 
 
-
 bool ArchiveImpl::extract(LPCTSTR outputDirectory, ProgressCallback* progressCallback,
                           FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback)
 {
-  m_ExtractCallback = new CArchiveExtractCallback(progressCallback, fileChangeCallback, errorCallback);
+  m_ExtractCallback = new CArchiveExtractCallback(progressCallback, fileChangeCallback, errorCallback, m_PasswordCallback);
   CMyComPtr<IArchiveExtractCallback> extractCallback = m_ExtractCallback;
   m_ExtractCallback->Init(m_ArchivePtr, GetUnicodeString(outputDirectory), &m_FileList[0], m_Password);
   HRESULT result = m_ArchivePtr->Extract(NULL, (UInt32)(Int32)(-1), false, extractCallback);

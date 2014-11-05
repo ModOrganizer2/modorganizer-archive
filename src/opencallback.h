@@ -49,7 +49,7 @@ public:
 
   CArchiveOpenCallback(PasswordCallback* passwordCallback);
 
-  ~CArchiveOpenCallback() { delete m_PasswordCallback; }
+  ~CArchiveOpenCallback() { }
 
   INTERFACE_IArchiveOpenCallback(;)
   INTERFACE_IArchiveOpenVolumeCallback(;)
