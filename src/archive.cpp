@@ -400,9 +400,9 @@ bool ArchiveImpl::extract(LPCTSTR outputDirectory, ProgressCallback* progressCal
                           FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback)
 {
   m_ExtractCallback = new CArchiveExtractCallback(progressCallback, fileChangeCallback, errorCallback, m_PasswordCallback);
-  CMyComPtr<IArchiveExtractCallback> extractCallback = m_ExtractCallback;
+  //CMyComPtr<IArchiveExtractCallback> extractCallback = m_ExtractCallback;
   m_ExtractCallback->Init(m_ArchivePtr, GetUnicodeString(outputDirectory), &m_FileList[0], m_Password);
-  HRESULT result = m_ArchivePtr->Extract(NULL, (UInt32)(Int32)(-1), false, extractCallback);
+  HRESULT result = m_ArchivePtr->Extract(NULL, (UInt32)(Int32)(-1), false, m_ExtractCallback);
   switch (result) {
     case S_OK: {
       //nop
