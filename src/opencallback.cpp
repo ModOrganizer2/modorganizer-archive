@@ -58,7 +58,7 @@ STDMETHODIMP CArchiveOpenCallback::SetCompleted(const UInt64 *UNUSED(files), con
 
 STDMETHODIMP CArchiveOpenCallback::CryptoGetTextPassword(BSTR* passwordOut)
 {
-  if (m_PasswordCallback != NULL) {
+  if (m_PasswordCallback != nullptr) {
     char* passwordBuffer = new char[MAX_PASSWORD_LENGTH + 1];
     memset(passwordBuffer, '\0', MAX_PASSWORD_LENGTH + 1);
     (*m_PasswordCallback)(passwordBuffer);
@@ -111,7 +111,7 @@ STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT *value
 
 STDMETHODIMP CArchiveOpenCallback::GetStream(const wchar_t *name, IInStream **inStream)
 {
-  *inStream = NULL;
+  *inStream = nullptr;
 
   UString fullPath = m_Path + name;
   if (!m_FileInfo.Find(fullPath)) {

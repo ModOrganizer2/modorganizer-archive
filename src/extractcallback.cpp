@@ -173,7 +173,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     *outStream = outStreamLoc.Detach();
   }
 
-  if (m_FileChangeCallback != NULL) {
+  if (m_FileChangeCallback != nullptr) {
     (*m_FileChangeCallback)(m_FilePath);
   }
 
@@ -209,7 +209,7 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
     }
   }
 
-  if (m_OutFileStream != NULL) {
+  if (m_OutFileStream != nullptr) {
     if (m_ProcessedFileInfo.MTimeDefined)
       m_OutFileStreamSpec->SetMTime(&m_ProcessedFileInfo.MTime);
     RINOK(m_OutFileStreamSpec->Close());
@@ -226,7 +226,7 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
 
 STDMETHODIMP CArchiveExtractCallback::CryptoGetTextPassword(BSTR *passwordOut)
 {
-  if (m_Password.IsEmpty() && (m_PasswordCallback != NULL)) {
+  if (m_Password.IsEmpty() && (m_PasswordCallback != nullptr)) {
     char* passwordBuffer = new char[MAX_PASSWORD_LENGTH + 1];
     memset(passwordBuffer, '\0', MAX_PASSWORD_LENGTH + 1);
     (*m_PasswordCallback)(passwordBuffer);
@@ -246,7 +246,7 @@ void CArchiveExtractCallback::SetCanceled(bool aCanceled)
 
 void CArchiveExtractCallback::reportError(const UString &message)
 {
-  if (m_ErrorCallback != NULL) {
+  if (m_ErrorCallback != nullptr) {
     (*m_ErrorCallback)(message);
   }
 }

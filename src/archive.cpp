@@ -177,7 +177,7 @@ private:
 
 
 ArchiveImpl::ArchiveImpl()
-  : m_Valid(true), m_LastError(ERROR_NONE), m_Library(new NWindows::NDLL::CLibrary), m_PasswordCallback(NULL)
+  : m_Valid(true), m_LastError(ERROR_NONE), m_Library(new NWindows::NDLL::CLibrary), m_PasswordCallback(nullptr)
 {
   if (!m_Library->Load(DLLName)) {
     m_LastError = ERROR_LIBRARY_NOT_FOUND;
@@ -185,7 +185,7 @@ ArchiveImpl::ArchiveImpl()
   }
 
   CreateObjectFunc = (CreateObjectType)m_Library->GetProc("CreateObject");
-  if (CreateObjectFunc == NULL) {
+  if (CreateObjectFunc == nullptr) {
     m_LastError = ERROR_LIBRARY_INVALID;
     m_Valid = false;
   }
@@ -250,7 +250,7 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
   UInt64 size;
   fileSpec->GetSize(&size);
 
-  const GUID *formatIdentifier = NULL;
+  const GUID *formatIdentifier = nullptr;
 
   // actually open the archive
   CArchiveOpenCallback *openCallback = new CArchiveOpenCallback(passwordCallback);
@@ -274,11 +274,11 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
     formatIdentifier = &CLSID_CFormatRar;
   }
 
-  if (formatIdentifier == NULL) {
+  if (formatIdentifier == nullptr) {
     // need to try different format identifiers
-    const GUID *identifiers[] = { &CLSID_CFormatSplit, &CLSID_CFormat7z, &CLSID_CFormatZip, &CLSID_CFormatRar, NULL };
+    const GUID *identifiers[] = { &CLSID_CFormatSplit, &CLSID_CFormat7z, &CLSID_CFormatZip, &CLSID_CFormatRar, nullptr };
     HRESULT res = S_FALSE;
-    for (int i = 0; identifiers[i] != NULL && res != S_OK; ++i) {
+    for (int i = 0; identifiers[i] != nullptr && res != S_OK; ++i) {
       if (CreateObjectFunc(identifiers[i], &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
         m_LastError = ERROR_LIBRARY_ERROR;
       }
@@ -333,7 +333,7 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
 
 bool ArchiveImpl::close()
 {
-  if (m_ArchivePtr != NULL) {
+  if (m_ArchivePtr != nullptr) {
     return m_ArchivePtr->Close() == S_OK;
   } else {
     return true;
@@ -402,7 +402,7 @@ bool ArchiveImpl::extract(LPCTSTR outputDirectory, ProgressCallback* progressCal
   m_ExtractCallback = new CArchiveExtractCallback(progressCallback, fileChangeCallback, errorCallback, m_PasswordCallback);
   //CMyComPtr<IArchiveExtractCallback> extractCallback = m_ExtractCallback;
   m_ExtractCallback->Init(m_ArchivePtr, GetUnicodeString(outputDirectory), &m_FileList[0], m_Password);
-  HRESULT result = m_ArchivePtr->Extract(NULL, (UInt32)(Int32)(-1), false, m_ExtractCallback);
+  HRESULT result = m_ArchivePtr->Extract(nullptr, (UInt32)(Int32)(-1), false, m_ExtractCallback);
   switch (result) {
     case S_OK: {
       //nop

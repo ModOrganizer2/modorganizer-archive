@@ -45,7 +45,7 @@ public:
                           ErrorCallback *errorCallback,
                           PasswordCallback *passwordCallback)
     : m_Canceled(false)
-    , m_FileData(NULL)
+    , m_FileData(nullptr)
     , m_ProgressCallback(progressCallback)
     , m_FileChangeCallback(fileChangeCallback)
     , m_ErrorCallback(errorCallback)
