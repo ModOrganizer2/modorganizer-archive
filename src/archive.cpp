@@ -410,6 +410,9 @@ bool ArchiveImpl::extract(LPCTSTR outputDirectory, ProgressCallback* progressCal
     case E_ABORT: {
       m_LastError = ERROR_EXTRACT_CANCELLED;
     } break;
+    case E_OUTOFMEMORY: {
+      m_LastError = ERROR_OUT_OF_MEMORY;
+    } break;
     default: {
       m_LastError = ERROR_LIBRARY_ERROR;
     } break;
