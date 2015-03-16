@@ -7,9 +7,9 @@ CONFIG(release, debug|release) {
 
 import os
 
-Import('qt_env')
+Import('env')
 
-env = qt_env.Clone()
+env = env.Clone()
 
 env.AppendUnique(CPPPATH = [
     '${SEVENZIP_PATH}\\CPP'
