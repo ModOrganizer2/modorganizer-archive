@@ -12,7 +12,7 @@ Import('env')
 env = env.Clone()
 
 env.AppendUnique(CPPPATH = [
-    '${SEVENZIP_PATH}\\CPP'
+    '${SEVENZIPPATH}\\CPP'
 ])
 
 env.AppendUnique(CPPDEFINES = [
@@ -54,7 +54,7 @@ for file in (
    os.path.join('Windows', 'PropVariantConversions.cpp')):
     objects.append(
         env.SharedObject(os.path.basename(file)[:-3] + 'obj',
-                         os.path.join('${SEVENZIP_PATH}', 'CPP', file)))
+                         os.path.join('${SEVENZIPPATH}', 'CPP', file)))
 
 lib = env.SharedLibrary('archive', cpp_files + objects + env.RES('version.rc'))
 
