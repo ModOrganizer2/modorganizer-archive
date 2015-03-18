@@ -1,0 +1,66 @@
+"""
+CONFIG(release, debug|release) {
+  QMAKE_CXXFLAGS += /Zi
+  QMAKE_LFLAGS += /DEBUG
+}
+"""
+
+import os
+
+Import('env')
+
+env = env.Clone()
+
+env.AppendUnique(CPPPATH = [
+    os.path.join('${SEVENZIPPATH}', 'CPP')
+])
+
+env.AppendUnique(CPPDEFINES = [
+    '_UNICODE',
+    '_WINDLL',
+    'WIN32',
+    'NOMINMAX'
+])
+
+env.AppendUnique(LIBS = [
+    'kernel32',
+    'user32',
+    'oleaut32'
+])
+
+# Set up a precompiled header file
+env['PCH'], pch_object = env.PCH('StdAfx.cpp')
+env['PCHSTOP'] = 'StdAfx.h'
+
+# And ignore errors if it's not included
+env.AppendUnique(CXXFLAGS = '/FIStdAfx.h')
+
+cpp_files = [ x for x in Glob('*.cpp') if not x.name == 'StdAfx.cpp' ]
+
+objects = [ pch_object ]
+
+for file in (
+   os.path.join('7zip', 'Common', 'FileStreams.cpp'),
+   os.path.join('Common', 'IntToString.cpp'),
+   os.path.join('Common', 'MyString.cpp'),
+   os.path.join('Common', 'MyVector.cpp'),
+   os.path.join('Common', 'StringConvert.cpp'),
+   os.path.join('Windows', 'DLL.cpp'),
+   os.path.join('Windows', 'FileDir.cpp'),
+   os.path.join('Windows', 'FileFind.cpp'),
+   os.path.join('Windows', 'FileIO.cpp'),
+   os.path.join('Windows', 'FileName.cpp'),
+   os.path.join('Windows', 'PropVariant.cpp'),
+   os.path.join('Windows', 'PropVariantConversions.cpp')):
+    objects.append(
+        env.SharedObject(os.path.basename(file)[:-3] + 'obj',
+                         os.path.join('${SEVENZIPPATH}', 'CPP', file)))
+
+lib = env.SharedLibrary('archive', cpp_files + objects + env.RES('version.rc'))
+
+# Not sure why this has to live in DLLs..
+install = env.Install(os.path.join(env['INSTALL_PATH'], 'DLLs'),
+                      filter(lambda x: x.suffix == '.dll' or x.suffix == '.pdb',
+                             lib))
+env.Pseudo('install')
+env.Depends('install', install)
