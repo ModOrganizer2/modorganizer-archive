@@ -12,7 +12,7 @@ Import('env')
 env = env.Clone()
 
 env.AppendUnique(CPPPATH = [
-    '${SEVENZIPPATH}\\CPP'
+    os.path.join('${SEVENZIPPATH}', 'CPP')
 ])
 
 env.AppendUnique(CPPDEFINES = [
@@ -35,10 +35,10 @@ env['PCHSTOP'] = 'StdAfx.h'
 # And ignore errors if it's not included
 env.AppendUnique(CXXFLAGS = '/FIStdAfx.h')
 
-cpp_files = [ x for x in Glob('*.cpp') if not str(x).endswith('StdAfx.cpp') ]
+cpp_files = [ x for x in Glob('*.cpp') if not x.name == 'StdAfx.cpp' ]
 
 objects = [ pch_object ]
-# Sigh - Why not just link with 7zip?
+
 for file in (
    os.path.join('7zip', 'Common', 'FileStreams.cpp'),
    os.path.join('Common', 'IntToString.cpp'),
@@ -60,8 +60,7 @@ lib = env.SharedLibrary('archive', cpp_files + objects + env.RES('version.rc'))
 
 # Not sure why this has to live in DLLs..
 install = env.Install(os.path.join(env['INSTALL_PATH'], 'DLLs'),
-                      filter(lambda x: str(x).endswith('.dll') or
-                                       str(x).endswith('.pdb'),
+                      filter(lambda x: x.suffix == '.dll' or x.suffix == '.pdb',
                              lib))
 env.Pseudo('install')
 env.Depends('install', install)
