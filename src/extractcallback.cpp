@@ -143,6 +143,10 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
 
   {
     // Create folders for file
+    //** TODO
+    //Create folders for all targets
+    //Probably best to make m_FilePath an array if we can
+    //and hence in the FileInfo class.
     int slashPos = m_FilePath.ReverseFind(WCHAR_PATH_SEPARATOR);
     if (slashPos >= 0) {
       NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + m_FilePath.Left(slashPos));
@@ -216,6 +220,11 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
   }
 
   m_OutFileStream.Release();
+  //**TODO
+  //At this point, we should do
+  //if (m_ExtractMode) {
+  // copy all files from same source to their targets
+  // for each possible output file, set the attributes
   if (m_ExtractMode && m_ProcessedFileInfo.AttribDefined) {
     NFile::NDirectory::MySetFileAttributes(m_DiskFilePath, m_ProcessedFileInfo.Attrib);
   }
