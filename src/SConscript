@@ -59,8 +59,4 @@ for file in (
 lib = env.SharedLibrary('archive', cpp_files + objects + env.RES('version.rc'))
 
 # Not sure why this has to live in DLLs..
-install = env.Install(os.path.join(env['INSTALL_PATH'], 'DLLs'),
-                      filter(lambda x: x.suffix == '.dll' or x.suffix == '.pdb',
-                             lib))
-env.Pseudo('install')
-env.Depends('install', install)
+env.InstallModule(lib, subdir = 'DLLs')
