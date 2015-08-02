@@ -25,7 +25,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "callback.h"
 
-
+#include <string>
+#include <vector>
 
 #ifdef _WINDLL
 #define DLLEXPORT _declspec(dllexport)
@@ -37,10 +38,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 class FileData {
 public:
   virtual LPCWSTR getFileName() const = 0;
-  virtual void setSkip(bool skip) = 0;
-  virtual bool getSkip() const = 0;
-  virtual void setOutputFileName(LPCWSTR fileName) = 0;
-  virtual LPCWSTR getOutputFileName() const = 0;
+  virtual void addOutputFileName(LPCWSTR fileName) = 0;
+  virtual std::vector<std::wstring> getAndClearOutputFileNames() = 0;
   virtual UINT64 getCRC() const = 0;
   virtual bool isDirectory() const = 0;
 };

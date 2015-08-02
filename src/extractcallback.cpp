@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 #include "extractcallback.h"
+
 #include "Windows/FileDir.h"
 #include "Windows/FileFind.h"
 #include "Windows/PropVariant.h"
@@ -84,18 +85,17 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
   *outStream = 0;
   m_OutFileStream.Release();
 
-  if (m_FileData[index]->getSkip()) {
-    return S_OK;
-  }
-
-  m_FilePath = m_FileData[index]->getOutputFileName();
-
   if (askExtractMode != NArchive::NExtract::NAskMode::kExtract) {
     return S_OK;
   }
 
+  std::vector<std::wstring> filenames = m_FileData[index]->getAndClearOutputFileNames();
+  if (filenames.size() == 0) {
+    return S_OK;
+  }
+
+  // Get Attrib
   {
-    // Get Attrib
     NCOM::CPropVariant prop;
     RINOK(m_ArchiveHandler->GetProperty(index, kpidAttrib, &prop));
     if (prop.vt == VT_EMPTY) {
@@ -112,8 +112,8 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
 
   RINOK(IsArchiveItemFolder(m_ArchiveHandler, index, m_ProcessedFileInfo.isDir));
 
+  // Get Modified Time
   {
-    // Get Modified Time
     NCOM::CPropVariant prop;
     RINOK(m_ArchiveHandler->GetProperty(index, kpidMTime, &prop));
     m_ProcessedFileInfo.MTimeDefined = false;
@@ -131,46 +131,52 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     }
   }
 
+  // Get Size - why? we don't do anything with it...
   {
-    // Get Size
     NCOM::CPropVariant prop;
     RINOK(m_ArchiveHandler->GetProperty(index, kpidSize, &prop));
     bool newFileSizeDefined = (prop.vt != VT_EMPTY);
     UInt64 newFileSize;
-    if (newFileSizeDefined)
+    if (newFileSizeDefined) {
       newFileSize = ConvertPropVariantToUInt64(prop);
-  }
-
-  {
-    // Create folders for file
-    //** TODO
-    //Create folders for all targets
-    //Probably best to make m_FilePath an array if we can
-    //and hence in the FileInfo class.
-    int slashPos = m_FilePath.ReverseFind(WCHAR_PATH_SEPARATOR);
-    if (slashPos >= 0) {
-      NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + m_FilePath.Left(slashPos));
     }
   }
 
-  UString fullProcessedPath = m_DirectoryPath + m_FilePath;
-  m_DiskFilePath = fullProcessedPath;
+  //Kludge for callbacks
+  UString m_FilePath = filenames[0].c_str();
 
   if (m_ProcessedFileInfo.isDir) {
-    NFile::NDirectory::CreateComplexDirectory(fullProcessedPath);
+    for (std::wstring const & s : filenames) {
+      //Apparently we don't care about errors
+      NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + s.c_str());
+    }
   } else {
-    NFile::NFind::CFileInfoW fi;
-    if (fi.Find(fullProcessedPath)) {
-      if (!NFile::NDirectory::DeleteFileAlways(fullProcessedPath)) {
-        reportError(UString(L"can't delete output file ") + fullProcessedPath);
-        return E_ABORT;
+    // Create folders for file and delete old file
+    std::vector<UString> fullProcessedPaths;
+    for (std::wstring const & s : filenames) {
+      UString const &t = s.c_str();
+      int slashPos = t.ReverseFind(WCHAR_PATH_SEPARATOR);
+      if (slashPos >= 0) {
+        NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + t.Left(slashPos));
       }
+      UString fullProcessedPath = m_DirectoryPath + t;
+      NFile::NFind::CFileInfoW fi;
+      if (fi.Find(fullProcessedPath)) {
+        if (!NFile::NDirectory::DeleteFileAlways(fullProcessedPath)) {
+          reportError(UString(L"can't delete output file ") + fullProcessedPath);
+          return E_ABORT;
+        }
+      }
+      fullProcessedPaths.push_back(fullProcessedPath);
     }
 
-    m_OutFileStreamSpec = new COutFileStream;
+    //This is a kludge for the callbacks
+    m_DiskFilePath =  m_DirectoryPath + m_FilePath;
+
+    m_OutFileStreamSpec = new MultiOutputStream;
     CMyComPtr<ISequentialOutStream> outStreamLoc(m_OutFileStreamSpec);
-    if (!m_OutFileStreamSpec->Open(fullProcessedPath, CREATE_ALWAYS)) {
-      reportError(UString(L"can not open output file ") + fullProcessedPath);
+    if (!m_OutFileStreamSpec->Open(fullProcessedPaths, CREATE_ALWAYS)) {
+      reportError(UString(L"can not open output file ") + m_DiskFilePath);
       return E_ABORT;
     }
     m_OutFileStream = outStreamLoc;

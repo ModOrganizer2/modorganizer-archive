@@ -71,18 +71,15 @@ public:
   FileDataImpl(const std::wstring &fileName, UInt64 crc, bool isDirectory);
 
   virtual LPCWSTR getFileName() const;
-  virtual void setSkip(bool skip) { m_Skip = skip; }
-  virtual bool getSkip() const { return m_Skip; }
-  virtual void setOutputFileName(LPCWSTR fileName);
-  virtual LPCWSTR getOutputFileName() const;
+  virtual void addOutputFileName(LPCWSTR fileName);
+  virtual std::vector<std::wstring> getAndClearOutputFileNames();
   virtual bool isDirectory() const { return m_IsDirectory; }
   virtual UInt64 getCRC() const;
 
 private:
   std::wstring m_FileName;
-  std::wstring m_OutputFileName;
   UInt64 m_CRC;
-  bool m_Skip;
+  std::vector<std::wstring> m_OutputFileNames;
   bool m_IsDirectory;
 };
 
@@ -92,16 +89,16 @@ LPCWSTR FileDataImpl::getFileName() const
   return m_FileName.c_str();
 }
 
-
-void FileDataImpl::setOutputFileName(LPCWSTR fileName)
+void FileDataImpl::addOutputFileName(LPCWSTR fileName)
 {
-  m_OutputFileName = fileName;
+  m_OutputFileNames.push_back(fileName);
 }
 
-
-LPCWSTR FileDataImpl::getOutputFileName() const
+std::vector<std::wstring> FileDataImpl::getAndClearOutputFileNames()
 {
-  return m_OutputFileName.c_str();
+  std::vector<std::wstring> result = m_OutputFileNames;
+  m_OutputFileNames.clear();
+  return result;
 }
 
 UInt64 FileDataImpl::getCRC() const {
@@ -110,7 +107,9 @@ UInt64 FileDataImpl::getCRC() const {
 
 
 FileDataImpl::FileDataImpl(const std::wstring &fileName, UInt64 crc, bool isDirectory)
-  : m_FileName(fileName), m_OutputFileName(fileName), m_CRC(crc), m_Skip(false), m_IsDirectory(isDirectory)
+  : m_FileName(fileName)
+  , m_CRC(crc)
+  , m_IsDirectory(isDirectory)
 {
 }
 
@@ -177,7 +176,10 @@ private:
 
 
 ArchiveImpl::ArchiveImpl()
-  : m_Valid(true), m_LastError(ERROR_NONE), m_Library(new NWindows::NDLL::CLibrary), m_PasswordCallback(nullptr)
+  : m_Valid(true)
+  , m_LastError(ERROR_NONE)
+  , m_Library(new NWindows::NDLL::CLibrary)
+  , m_PasswordCallback(nullptr)
 {
   if (!m_Library->Load(DLLName)) {
     m_LastError = ERROR_LIBRARY_NOT_FOUND;
@@ -400,7 +402,6 @@ bool ArchiveImpl::extract(LPCTSTR outputDirectory, ProgressCallback* progressCal
                           FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback)
 {
   m_ExtractCallback = new CArchiveExtractCallback(progressCallback, fileChangeCallback, errorCallback, m_PasswordCallback);
-  //CMyComPtr<IArchiveExtractCallback> extractCallback = m_ExtractCallback;
   m_ExtractCallback->Init(m_ArchivePtr, GetUnicodeString(outputDirectory), &m_FileList[0], m_Password);
   HRESULT result = m_ArchivePtr->Extract(nullptr, (UInt32)(Int32)(-1), false, m_ExtractCallback);
   switch (result) {

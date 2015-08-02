@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef EXTRACTCALLBACK_H
 #define EXTRACTCALLBACK_H
 
+#include "multioutputstream.h"
 
 #include "Common/StringConvert.h"
 
@@ -86,7 +87,6 @@ private:
   unsigned __int64 m_Total;
 
   UString m_DirectoryPath;
-  UString m_FilePath;
   UString m_DiskFilePath;
   bool m_ExtractMode;
   bool m_Canceled;
@@ -99,7 +99,7 @@ private:
     bool MTimeDefined;
   } m_ProcessedFileInfo;
 
-  COutFileStream *m_OutFileStreamSpec;
+  MultiOutputStream *m_OutFileStreamSpec;
   CMyComPtr<ISequentialOutStream> m_OutFileStream;
 
   FileData* const *m_FileData;

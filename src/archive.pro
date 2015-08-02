@@ -30,7 +30,8 @@ SOURCES += archive.cpp \
     "$${SEVENZIPPATH}/CPP/Windows/FileName.cpp" \
     extractcallback.cpp \
     callback.cpp \
-    opencallback.cpp
+    opencallback.cpp \
+    multioutputstream.cpp
 
 
 HEADERS += archive.h\
@@ -50,7 +51,8 @@ HEADERS += archive.h\
     "$${SEVENZIPPATH}/CPP/Windows/FileName.h" \
     extractcallback.h \
     callback.h \
-    opencallback.h
+    opencallback.h \
+    multioutputstream.h
 
 
 OTHER_FILES += \
