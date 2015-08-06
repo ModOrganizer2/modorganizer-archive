@@ -1,16 +1,7 @@
 #ifndef MULTIOUTPUTSTREAM_H
 #define MULTIOUTPUTSTREAM_H
 
-#ifdef _WIN32
-#define USE_WIN_FILE
-#endif
-
-#ifdef USE_WIN_FILE
 #include "Windows/FileIO.h"
-#else
-#include "Common/C_FileIO.h"
-#endif
-
 #include "Common/MyCom.h"
 #include "Common/MyString.h"
 #include "7zip/IStream.h"
@@ -18,52 +9,60 @@
 #include <string>
 #include <vector>
 
-/** This class is like a COutputStream but wraps multiple file handles.
- * Note that the handling on errors could be better. Basically, except for
- * Close, any processing will stop on the first error
+/** This class allows you to open and output to multiple file handles at a time.
+ * It implements the ISequentalOutputStream interface and has some extra functions
+ * which are used by the CArchiveExtractCallback class to basically open and
+ * set the timestamp on all the files.
+ *
+ * Note that the handling on errors could be better.
  */
 class MultiOutputStream :
-    public IOutStream,
+    public ISequentialOutStream,
     public CMyUnknownImp
 {
-  #ifdef USE_WIN_FILE
   typedef NWindows::NFile::NIO::COutFile OutFile;
-  #else
-  typedef NC::NFile::NIO::COutFile OutFile;
-  #endif
   std::vector<OutFile> m_Handles;
 
 public:
   virtual ~MultiOutputStream() {}
 
-  bool Create(std::vector<UString> const &fileNames, bool createAlways);
-
+  /** Opens the supplied files.
+   *
+   * @returns true if all went OK, false if any file failed to open
+   */
   bool Open(std::vector<UString> const &fileNames, DWORD creationDisposition);
 
-  #ifdef USE_WIN_FILE
-  #ifndef _UNICODE
-  //Not implemented. Why bother?
-  bool Create(LPCWSTR fileName, bool createAlways);
-  bool Open(LPCWSTR fileName, DWORD creationDisposition)
-  #endif
-  #endif
-
+  /** Closes all the files opened by the last open
+   *
+   * Note if there are any errors, the code will merely report the last one.
+   */
   HRESULT Close();
 
+  /** This is the amount of data written to *any one* file.
+   *
+   * If there are errors writing to one of the files, this might or might
+   * not match what was actually written to another of the files
+   */
   UInt64 ProcessedSize;
 
-  #ifdef USE_WIN_FILE
-  bool SetTime(const FILETIME *cTime, const FILETIME *aTime, const FILETIME *mTime);
-
+  /** Sets the modification time on the open files
+   *
+   * @returns true if all files had the time set succesfully, false otherwise
+   * note that this will give up as soon as it gets an error
+   */
   bool SetMTime(const FILETIME *mTime);
-  #endif
 
+  //Heaven alone knows what this is for
+  MY_UNKNOWN_IMP
 
-  MY_UNKNOWN_IMP1(IOutStream)
-
+  /** Write data to all the streams
+   *
+   * THe processedSize returned will be the same as size, unless
+   * there was an error, in which case it might or might not be different.
+   * @warn If an error happens, the code will not attempt any further writing,
+   * so some files might not get written to at all
+   */
   STDMETHOD(Write)(const void *data, UInt32 size, UInt32 *processedSize);
-  STDMETHOD(Seek)(Int64 offset, UInt32 seekOrigin, UInt64 *newPosition);
-  STDMETHOD(SetSize)(UInt64 newSize);
 };
 
 

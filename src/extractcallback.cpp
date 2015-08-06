@@ -226,11 +226,6 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
   }
 
   m_OutFileStream.Release();
-  //**TODO
-  //At this point, we should do
-  //if (m_ExtractMode) {
-  // copy all files from same source to their targets
-  // for each possible output file, set the attributes
   if (m_ExtractMode && m_ProcessedFileInfo.AttribDefined) {
     NFile::NDirectory::MySetFileAttributes(m_DiskFilePath, m_ProcessedFileInfo.Attrib);
   }
