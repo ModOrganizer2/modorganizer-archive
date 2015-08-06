@@ -174,7 +174,6 @@ private:
 
 };
 
-
 ArchiveImpl::ArchiveImpl()
   : m_Valid(true)
   , m_LastError(ERROR_NONE)
@@ -184,13 +183,16 @@ ArchiveImpl::ArchiveImpl()
   if (!m_Library->Load(DLLName)) {
     m_LastError = ERROR_LIBRARY_NOT_FOUND;
     m_Valid = false;
+    return;
   }
 
   CreateObjectFunc = (CreateObjectType)m_Library->GetProc("CreateObject");
   if (CreateObjectFunc == nullptr) {
     m_LastError = ERROR_LIBRARY_INVALID;
     m_Valid = false;
+    return;
   }
+
 }
 
 
@@ -276,6 +278,20 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
     formatIdentifier = &CLSID_CFormatRar;
   }
 
+  //See if we can open that as an archive (it's possible some bright spark changed the
+  //extension (because you can...), but we give it a try anyway
+
+  if (formatIdentifier != nullptr) {
+    if (CreateObjectFunc(formatIdentifier, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
+      m_LastError = ERROR_LIBRARY_ERROR;
+      return false;
+    }
+
+    if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
+      formatIdentifier = nullptr;
+    }
+  }
+
   if (formatIdentifier == nullptr) {
     // need to try different format identifiers
     const GUID *identifiers[] = { &CLSID_CFormatSplit, &CLSID_CFormat7z, &CLSID_CFormatZip, &CLSID_CFormatRar, nullptr };
@@ -290,16 +306,6 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
     }
     if (res != S_OK) {
       m_LastError = ERROR_INVALID_ARCHIVE_FORMAT;
-      return false;
-    }
-  } else {
-    if (CreateObjectFunc(formatIdentifier, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
-      m_LastError = ERROR_LIBRARY_ERROR;
-      return false;
-    }
-
-    if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
-      m_LastError = ERROR_ARCHIVE_INVALID;
       return false;
     }
   }
