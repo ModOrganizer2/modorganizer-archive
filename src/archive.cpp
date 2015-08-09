@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "Common/IntToString.h"
 #include "Common/MyInitGuid.h"
 #include "Common/StringConvert.h"
-
 #include "Windows/DLL.h"
 #include "Windows/FileDir.h"
 #include "Windows/FileFind.h"
@@ -36,7 +35,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "7zip/Common/FileStreams.h"
 #include "7zip/MyVersion.h"
-
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 
@@ -44,26 +42,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "opencallback.h"
 
 #include <algorithm>
+#include <map>
 #include <string>
+#include <sstream>
+#include <unordered_map>
 #include <vector>
 
 using namespace NWindows;
 
 
 static const TCHAR DLLName[] = TEXT("dlls/7z.dll");
-
-
-
-DEFINE_GUID(CLSID_CFormatZip,
-  0x23170F69, 0x40C1, 0x278A, 0x10, 0x00, 0x00, 0x01, 0x10, 0x01, 0x00, 0x00);
-DEFINE_GUID(CLSID_CFormatRar,
-  0x23170F69, 0x40C1, 0x278A, 0x10, 0x00, 0x00, 0x01, 0x10, 0x03, 0x00, 0x00);
-DEFINE_GUID(CLSID_CFormat7z,
-  0x23170F69, 0x40C1, 0x278A, 0x10, 0x00, 0x00, 0x01, 0x10, 0x07, 0x00, 0x00);
-DEFINE_GUID(CLSID_CFormatSplit,
-  0x23170f69, 0x40c1, 0x278A, 0x10, 0x00, 0x00, 0x01, 0x10, 0xea, 0x00, 0x00);
-
-
 
 class FileDataImpl : public FileData {
   friend class Archive;
@@ -154,6 +142,8 @@ private:
   void clearFileList();
   void resetFileList();
 
+  HRESULT loadFormats();
+
 private:
 
   CreateObjectType CreateObjectFunc;
@@ -172,29 +162,191 @@ private:
 
   UString m_Password;
 
+  struct ArchiveFormatInfo
+  {
+    CLSID m_ClassID;
+    std::wstring m_Name;
+    std::string m_StartSignature; //Strictly this is unsigned, but...
+    std::wstring m_Extensions;
+    std::wstring m_AdditionalExtensions;
+  };
+
+  typedef std::vector<ArchiveFormatInfo> Formats;
+  Formats m_Formats;
+
+  typedef std::unordered_map<std::wstring, Formats> FormatMap;
+  FormatMap m_FormatMap;
+
+  //I don't think one signature could possibly describe two formats.
+  typedef std::map<std::string, ArchiveFormatInfo> SignatureMap;
+  SignatureMap m_SignatureMap;
+
+  std::size_t m_MaxSignatureLen = 0;
 };
 
+typedef UInt32 (WINAPI *GetNumberOfFormatsFunc)(UInt32 *numFormats);
+typedef UInt32 (WINAPI *GetHandlerPropertyFunc)(PROPID propID, PROPVARIANT *value);
+typedef UInt32 (WINAPI *GetHandlerPropertyFunc2)(UInt32 index, PROPID propID, PROPVARIANT *value);
+
+static HRESULT ReadProp(
+    GetHandlerPropertyFunc getProp,
+    GetHandlerPropertyFunc2 getProp2,
+    UInt32 index, PROPID propID, NCOM::CPropVariant &prop)
+{
+  return getProp2 ? getProp2(index, propID, &prop) : getProp(propID, &prop);
+}
+
+static HRESULT ReadBoolProp(
+    GetHandlerPropertyFunc getProp,
+    GetHandlerPropertyFunc2 getProp2,
+    UInt32 index, PROPID propID, bool &res)
+{
+  NCOM::CPropVariant prop;
+  RINOK(ReadProp(getProp, getProp2, index, propID, prop));
+  if (prop.vt == VT_BOOL) {
+    res = VARIANT_BOOLToBool(prop.boolVal);
+  } else if (prop.vt != VT_EMPTY) {
+    return E_FAIL;
+  } else {
+    res = false;
+  }
+  return S_OK;
+}
+
+static HRESULT ReadStringProp(
+    GetHandlerPropertyFunc getProp,
+    GetHandlerPropertyFunc2 getProp2,
+    UInt32 index, PROPID propID, UString &res)
+{
+  NCOM::CPropVariant prop;
+  RINOK(ReadProp(getProp, getProp2, index, propID, prop));
+  if (prop.vt == VT_BSTR) {
+    res = prop.bstrVal;
+  } else if (prop.vt != VT_EMPTY) {
+    return E_FAIL;
+  } else {
+    res.Empty();
+  }
+  return S_OK;
+}
+
+
+
+HRESULT ArchiveImpl::loadFormats()
+{
+  GetHandlerPropertyFunc getProp = 0;
+  GetHandlerPropertyFunc2 getProp2 = (GetHandlerPropertyFunc2)m_Library->GetProc("GetHandlerProperty2");
+  if (getProp2 == NULL) {
+    getProp = (GetHandlerPropertyFunc)m_Library->GetProc("GetHandlerProperty");
+    if (getProp == NULL) {
+      return S_OK;
+    }
+  }
+
+  UInt32 numFormats = 1;
+  GetNumberOfFormatsFunc getNumberOfFormats = (GetNumberOfFormatsFunc)m_Library->GetProc("GetNumberOfFormats");
+  if (getNumberOfFormats != NULL) {
+    RINOK(getNumberOfFormats(&numFormats));
+  }
+  //This is sort of strange
+  if (getProp2 == NULL) {
+    numFormats = 1;
+  }
+
+  for(UInt32 i = 0; i < numFormats; i++)
+  {
+    ArchiveFormatInfo item;
+
+    UString name;
+    RINOK(ReadStringProp(getProp, getProp2, i, NArchive::kName, name));
+    item.m_Name.assign(static_cast<wchar_t const *>(name), name.Length());
+
+    //Should split up the extensions and map extension to type, and see what we get from that for preference
+    //then try all extensions anyway...
+    NCOM::CPropVariant prop;
+    if (ReadProp(getProp, getProp2, i, NArchive::kClassID, prop) != S_OK) {
+      continue;
+    }
+    if (prop.vt != VT_BSTR) {
+      continue;
+    }
+    item.m_ClassID = *(const GUID *)prop.bstrVal;
+
+    UString ext;
+    RINOK(ReadStringProp(getProp, getProp2, i, NArchive::kExtension, ext));
+    item.m_Extensions.assign(static_cast<wchar_t const *>(ext), ext.Length());
+
+    //This is unnecessary currently for our purposes. Basically, for each
+    //extension, there's an 'addext' which, if set (to other than *) means that
+    //theres a double encoding going on. For instance, the bzip format is like this
+    //addext = "* * .tar .tar"
+    //ext    = "bz2 bzip2 tbz2 tbz"
+    //which means that tbz2 and tbz should uncompress to a tar file which can be
+    //further processed as if it were a tar file. Having said which, we don't
+    //need to support this at all, so I'm storing it but ignoring it.
+    UString addext;
+    RINOK(ReadStringProp(getProp, getProp2, i, NArchive::kAddExtension, addext));
+    item.m_AdditionalExtensions.assign(static_cast<wchar_t const *>(addext), addext.Length());
+
+    prop.Clear();
+    if (ReadProp(getProp, getProp2, i, NArchive::kStartSignature, prop) == S_OK) {
+      if (prop.vt == VT_BSTR) {
+        //If he can do a memmove, i can do a reinterpret_cast.
+        //This appears to be abusing the interface and storing a normal string in
+        //something claiming to be a wide string.
+        std::string signature(reinterpret_cast<char const *>(prop.bstrVal),
+                              ::SysStringByteLen(prop.bstrVal));
+
+        if (! signature.empty()) {
+          item.m_StartSignature = signature;
+          if (m_MaxSignatureLen < signature.size()) {
+            m_MaxSignatureLen = signature.size();
+          }
+          m_SignatureMap[signature] = item;
+        }
+      }
+    }
+
+    //Now split the extension up from the space separated string and create
+    //a map from each extension to the possible formats
+    //We could make these pointers but it's not a massive overhead and nobody
+    //should be changing this
+    std::wistringstream s(item.m_Extensions);
+    std::wstring t;
+    std::vector<std::wstring> exts;
+    while (s >> t) {
+      m_FormatMap[t].push_back(item);
+    }
+    m_Formats.push_back(item);
+  }
+  return S_OK;
+}
+
+
 ArchiveImpl::ArchiveImpl()
-  : m_Valid(true)
+  : m_Valid(false)
   , m_LastError(ERROR_NONE)
   , m_Library(new NWindows::NDLL::CLibrary)
   , m_PasswordCallback(nullptr)
 {
   if (!m_Library->Load(DLLName)) {
     m_LastError = ERROR_LIBRARY_NOT_FOUND;
-    m_Valid = false;
     return;
   }
 
   CreateObjectFunc = (CreateObjectType)m_Library->GetProc("CreateObject");
   if (CreateObjectFunc == nullptr) {
     m_LastError = ERROR_LIBRARY_INVALID;
-    m_Valid = false;
     return;
   }
 
-}
+  if (loadFormats() != S_OK) {
+    m_LastError = ERROR_LIBRARY_INVALID;
+    return;
+  }
 
+  m_Valid = true;
+}
 
 ArchiveImpl::~ArchiveImpl()
 {
@@ -251,10 +403,6 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
     m_LastError = ERROR_FAILED_TO_OPEN_ARCHIVE;
     return false;
   }
-  UInt64 size;
-  fileSpec->GetSize(&size);
-
-  const GUID *formatIdentifier = nullptr;
 
   // actually open the archive
   CArchiveOpenCallback *openCallback = new CArchiveOpenCallback(passwordCallback);
@@ -265,49 +413,69 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
   CMyComPtr<IArchiveOpenCallback> openCallbackPtr(openCallback);
 
   // determine archive type based on extension
-  int extensionPos = m_ArchiveName.ReverseFind(L'.');
-  UString extension = m_ArchiveName.Mid(extensionPos + 1);
-
-  extension.MakeLower();
-
-  if (extension == L"7z") {
-    formatIdentifier = &CLSID_CFormat7z;
-  } else if (extension == L"zip") {
-    formatIdentifier = &CLSID_CFormatZip;
-  } else if (extension == L"rar") {
-    formatIdentifier = &CLSID_CFormatRar;
+  Formats const *formats = nullptr;
+  {
+    int extensionPos = m_ArchiveName.ReverseFind(L'.');
+    UString extension = m_ArchiveName.Mid(extensionPos + 1);
+    extension.MakeLower();
+    std::wstring ext(static_cast<wchar_t const *>(extension), extension.Length());
+    FormatMap::const_iterator map_iter = m_FormatMap.find(ext);
+    if (map_iter != m_FormatMap.end()) {
+      formats = &map_iter->second;
+    }
   }
 
-  //See if we can open that as an archive (it's possible some bright spark changed the
-  //extension (because you can...), but we give it a try anyway
-
-  if (formatIdentifier != nullptr) {
-    if (CreateObjectFunc(formatIdentifier, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
+  //OK, we have some potential formats. If there is only one, try it now. If
+  //there are multiple formats, we'll try by signature lookup first.
+  bool found = false;
+  if (formats != nullptr && formats->size() == 1) {
+    if (CreateObjectFunc(&(*formats)[0].m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
       m_LastError = ERROR_LIBRARY_ERROR;
       return false;
     }
 
-    if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
-      formatIdentifier = nullptr;
+    if (m_ArchivePtr->Open(file, 0, openCallbackPtr) == S_OK) {
+      found = true;
     }
   }
 
-  if (formatIdentifier == nullptr) {
-    // need to try different format identifiers
-    const GUID *identifiers[] = { &CLSID_CFormatSplit, &CLSID_CFormat7z, &CLSID_CFormatZip, &CLSID_CFormatRar, nullptr };
-    HRESULT res = S_FALSE;
-    for (int i = 0; identifiers[i] != nullptr && res != S_OK; ++i) {
-      if (CreateObjectFunc(identifiers[i], &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
+  if (!found) {
+    //Read the signature of the file and look that up.
+    std::vector<char> buff;
+    buff.reserve(m_MaxSignatureLen);
+    UInt32 act;
+    file->Seek(0, STREAM_SEEK_SET, nullptr);
+    file->Read(buff.data(), m_MaxSignatureLen, &act);
+    file->Seek(0, STREAM_SEEK_SET, nullptr);
+    std::string signature = std::string(buff.data(), act);
+    //Get the first iterator that is strictly > the signature we're looking for.
+    //Note: This assumes there is at least one signature to look at!
+    SignatureMap::const_iterator fmt = m_SignatureMap.upper_bound(signature);
+    --fmt;
+    //this must be <= to our key. Again, given we have unique signatures in here,
+    //there shouldn't be any issue with spuriously matching.
+    if (fmt->first == std::string(buff.data(), fmt->first.size())) {
+      if (CreateObjectFunc(&fmt->second.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
         m_LastError = ERROR_LIBRARY_ERROR;
+        return false;
       }
-      if ((res = m_ArchivePtr->Open(file, 0, openCallbackPtr)) != S_OK) {
-        m_ArchivePtr.Release();
+
+      if (m_ArchivePtr->Open(file, 0, openCallbackPtr) == S_OK) {
+        //this is where I really want to output stuff saying what I've done.
+        found = true;
       }
+      //Arguably we should give up here if it's not OK if 7zip can't even start
+      //to decode even though we've found the format from the signature.
+      //Sadly, the 7zip API documentation is pretty well non-existant.
     }
-    if (res != S_OK) {
-      m_LastError = ERROR_INVALID_ARCHIVE_FORMAT;
-      return false;
-    }
+    //If we get here, we have a file which doesn't have an identifiable
+    //signature and doesn't have a unique extension. We *could* iterate over
+    //all the formats and try them, but that seems excessive.
+  }
+
+  if (!found) {
+    m_LastError = ERROR_INVALID_ARCHIVE_FORMAT;
+    return false;
   }
 
   m_Password = openCallback->GetPassword();
