@@ -90,7 +90,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
   }
 
   std::vector<std::wstring> filenames = m_FileData[index]->getAndClearOutputFileNames();
-  if (filenames.size() == 0) {
+  if (filenames.empty()) {
     return S_OK;
   }
 
@@ -143,25 +143,25 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
   }
 
   //Kludge for callbacks
-  UString m_FilePath = filenames[0].c_str();
+  UString filePath = filenames[0].c_str();
 
   if (m_ProcessedFileInfo.isDir) {
-    for (std::wstring const & s : filenames) {
-      //Apparently we don't care about errors
-      NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + s.c_str());
+    for (const std::wstring &filename : filenames) {
+      // TODO: error handling
+      NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + filename.c_str());
     }
   } else {
     // Create folders for file and delete old file
     std::vector<UString> fullProcessedPaths;
-    for (std::wstring const & s : filenames) {
-      UString const &t = s.c_str();
-      int slashPos = t.ReverseFind(WCHAR_PATH_SEPARATOR);
+    for (const std::wstring &filename : filenames) {
+      const UString &filenameU = filename.c_str();
+      int slashPos = filenameU.ReverseFind(WCHAR_PATH_SEPARATOR);
       if (slashPos >= 0) {
-        NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + t.Left(slashPos));
+        NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + filenameU.Left(slashPos));
       }
-      UString fullProcessedPath = m_DirectoryPath + t;
-      NFile::NFind::CFileInfoW fi;
-      if (fi.Find(fullProcessedPath)) {
+      UString fullProcessedPath = m_DirectoryPath + filenameU;
+      NFile::NFind::CFileInfoW fileInfo;
+      if (fileInfo.Find(fullProcessedPath)) {
         if (!NFile::NDirectory::DeleteFileAlways(fullProcessedPath)) {
           reportError(UString(L"can't delete output file ") + fullProcessedPath);
           return E_ABORT;
@@ -171,7 +171,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     }
 
     //This is a kludge for the callbacks
-    m_DiskFilePath =  m_DirectoryPath + m_FilePath;
+    m_DiskFilePath =  m_DirectoryPath + filePath;
 
     m_OutFileStreamSpec = new MultiOutputStream;
     CMyComPtr<ISequentialOutStream> outStreamLoc(m_OutFileStreamSpec);
@@ -184,7 +184,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
   }
 
   if (m_FileChangeCallback != nullptr) {
-    (*m_FileChangeCallback)(m_FilePath);
+    (*m_FileChangeCallback)(filePath);
   }
 
   return S_OK;
