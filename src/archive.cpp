@@ -166,7 +166,7 @@ private:
   {
     CLSID m_ClassID;
     std::wstring m_Name;
-    std::string m_StartSignature; //Strictly this is unsigned, but...
+    std::string m_StartSignature;
     std::wstring m_Extensions;
     std::wstring m_AdditionalExtensions;
   };
@@ -185,24 +185,21 @@ private:
 };
 
 typedef UInt32 (WINAPI *GetNumberOfFormatsFunc)(UInt32 *numFormats);
-typedef UInt32 (WINAPI *GetHandlerPropertyFunc)(PROPID propID, PROPVARIANT *value);
 typedef UInt32 (WINAPI *GetHandlerPropertyFunc2)(UInt32 index, PROPID propID, PROPVARIANT *value);
 
 static HRESULT ReadProp(
-    GetHandlerPropertyFunc getProp,
     GetHandlerPropertyFunc2 getProp2,
     UInt32 index, PROPID propID, NCOM::CPropVariant &prop)
 {
-  return getProp2 ? getProp2(index, propID, &prop) : getProp(propID, &prop);
+  return getProp2(index, propID, &prop);
 }
 
 static HRESULT ReadBoolProp(
-    GetHandlerPropertyFunc getProp,
     GetHandlerPropertyFunc2 getProp2,
     UInt32 index, PROPID propID, bool &res)
 {
   NCOM::CPropVariant prop;
-  RINOK(ReadProp(getProp, getProp2, index, propID, prop));
+  RINOK(ReadProp(getProp2, index, propID, prop));
   if (prop.vt == VT_BOOL) {
     res = VARIANT_BOOLToBool(prop.boolVal);
   } else if (prop.vt != VT_EMPTY) {
@@ -214,12 +211,11 @@ static HRESULT ReadBoolProp(
 }
 
 static HRESULT ReadStringProp(
-    GetHandlerPropertyFunc getProp,
     GetHandlerPropertyFunc2 getProp2,
     UInt32 index, PROPID propID, UString &res)
 {
   NCOM::CPropVariant prop;
-  RINOK(ReadProp(getProp, getProp2, index, propID, prop));
+  RINOK(ReadProp(getProp2, index, propID, prop));
   if (prop.vt == VT_BSTR) {
     res = prop.bstrVal;
   } else if (prop.vt != VT_EMPTY) {
@@ -231,49 +227,42 @@ static HRESULT ReadStringProp(
 }
 
 
-
+//Seriously, there is one format returned in the list that has no registered
+//extension and no signature. WTF?
 HRESULT ArchiveImpl::loadFormats()
 {
-  GetHandlerPropertyFunc getProp = 0;
   GetHandlerPropertyFunc2 getProp2 = (GetHandlerPropertyFunc2)m_Library->GetProc("GetHandlerProperty2");
-  if (getProp2 == NULL) {
-    getProp = (GetHandlerPropertyFunc)m_Library->GetProc("GetHandlerProperty");
-    if (getProp == NULL) {
-      return S_OK;
-    }
+  if (getProp2 == nullptr) {
+    return S_OK;
   }
 
   UInt32 numFormats = 1;
   GetNumberOfFormatsFunc getNumberOfFormats = (GetNumberOfFormatsFunc)m_Library->GetProc("GetNumberOfFormats");
-  if (getNumberOfFormats != NULL) {
+  if (getNumberOfFormats != nullptr) {
     RINOK(getNumberOfFormats(&numFormats));
   }
-  //This is sort of strange
-  if (getProp2 == NULL) {
-    numFormats = 1;
-  }
 
-  for(UInt32 i = 0; i < numFormats; i++)
+  for (UInt32 i = 0; i < numFormats; ++i)
   {
     ArchiveFormatInfo item;
 
     UString name;
-    RINOK(ReadStringProp(getProp, getProp2, i, NArchive::kName, name));
+    RINOK(ReadStringProp(getProp2, i, NArchive::kName, name));
     item.m_Name.assign(static_cast<wchar_t const *>(name), name.Length());
 
     //Should split up the extensions and map extension to type, and see what we get from that for preference
     //then try all extensions anyway...
     NCOM::CPropVariant prop;
-    if (ReadProp(getProp, getProp2, i, NArchive::kClassID, prop) != S_OK) {
-      continue;
+    if (ReadProp(getProp2, i, NArchive::kClassID, prop) != S_OK) {
+      return E_FAIL;
     }
     if (prop.vt != VT_BSTR) {
-      continue;
+      continue; //only if empty? return E_FAIL;
     }
     item.m_ClassID = *(const GUID *)prop.bstrVal;
 
     UString ext;
-    RINOK(ReadStringProp(getProp, getProp2, i, NArchive::kExtension, ext));
+    RINOK(ReadStringProp(getProp2, i, NArchive::kExtension, ext));
     item.m_Extensions.assign(static_cast<wchar_t const *>(ext), ext.Length());
 
     //This is unnecessary currently for our purposes. Basically, for each
@@ -285,11 +274,11 @@ HRESULT ArchiveImpl::loadFormats()
     //further processed as if it were a tar file. Having said which, we don't
     //need to support this at all, so I'm storing it but ignoring it.
     UString addext;
-    RINOK(ReadStringProp(getProp, getProp2, i, NArchive::kAddExtension, addext));
+    RINOK(ReadStringProp(getProp2, i, NArchive::kAddExtension, addext));
     item.m_AdditionalExtensions.assign(static_cast<wchar_t const *>(addext), addext.Length());
 
     prop.Clear();
-    if (ReadProp(getProp, getProp2, i, NArchive::kStartSignature, prop) == S_OK) {
+    if (ReadProp(getProp2, i, NArchive::kStartSignature, prop) == S_OK) {
       if (prop.vt == VT_BSTR) {
         //If he can do a memmove, i can do a reinterpret_cast.
         //This appears to be abusing the interface and storing a normal string in
@@ -305,6 +294,10 @@ HRESULT ArchiveImpl::loadFormats()
           m_SignatureMap[signature] = item;
         }
       }
+      else {
+        continue; //onlif empty? return E_FAIL;
+      }
+
     }
 
     //Now split the extension up from the space separated string and create
@@ -412,6 +405,9 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
 
   CMyComPtr<IArchiveOpenCallback> openCallbackPtr(openCallback);
 
+  //FIXME Would it be more sensible to try the signature first? Then iterate
+  //over the formats
+
   // determine archive type based on extension
   Formats const *formats = nullptr;
   {
@@ -429,7 +425,7 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
   //there are multiple formats, we'll try by signature lookup first.
   bool found = false;
   if (formats != nullptr && formats->size() == 1) {
-    if (CreateObjectFunc(&(*formats)[0].m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
+    if (CreateObjectFunc(&formats->front().m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
       m_LastError = ERROR_LIBRARY_ERROR;
       return false;
     }
@@ -470,7 +466,8 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
     }
     //If we get here, we have a file which doesn't have an identifiable
     //signature and doesn't have a unique extension. We *could* iterate over
-    //all the formats and try them, but that seems excessive.
+    //all the formats and try them, but that seems excessive. In any case, the
+    //7-zip documentation doesn't document informatio I used to get the formats.
   }
 
   if (!found) {
