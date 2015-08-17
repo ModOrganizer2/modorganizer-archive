@@ -73,7 +73,7 @@ public:
 
 public:
 
-  void Init(IInArchive *archiveHandler, const UString &directoryPath, FileData* const *fileData, const UString &password);
+  void Init(IInArchive *archiveHandler, const UString &directoryPath, FileData* const *fileData, UString *password);
 
 private:
 
@@ -103,7 +103,7 @@ private:
   CMyComPtr<ISequentialOutStream> m_OutFileStream;
 
   FileData* const *m_FileData;
-  UString m_Password;
+  UString *m_Password;
 
   ProgressCallback *m_ProgressCallback;
   FileChangeCallback *m_FileChangeCallback;

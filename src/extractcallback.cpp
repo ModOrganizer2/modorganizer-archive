@@ -33,7 +33,7 @@ using namespace NWindows;
 
 
 void CArchiveExtractCallback::Init(IInArchive *archiveHandler, const UString &directoryPath,
-                                   FileData* const *fileData, const UString &password)
+                                   FileData* const *fileData, UString *password)
 {
   m_ArchiveHandler = archiveHandler;
   m_DirectoryPath = directoryPath;
@@ -236,15 +236,14 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
 
 STDMETHODIMP CArchiveExtractCallback::CryptoGetTextPassword(BSTR *passwordOut)
 {
-  if (m_Password.IsEmpty() && (m_PasswordCallback != nullptr)) {
-    char* passwordBuffer = new char[MAX_PASSWORD_LENGTH + 1];
-    memset(passwordBuffer, '\0', MAX_PASSWORD_LENGTH + 1);
-    (*m_PasswordCallback)(passwordBuffer);
-    m_Password = GetUnicodeString(passwordBuffer);
+  if (m_Password->IsEmpty() && (m_PasswordCallback != nullptr)) {
+    std::vector<char> passwordBuffer(MAX_PASSWORD_LENGTH + 1);
+    (*m_PasswordCallback)(&passwordBuffer[0]);
+    *m_Password = GetUnicodeString(&passwordBuffer[0]);
   }
 
   // reuse the password entered on opening, we don't ask the user twice
-  return StringToBstr(m_Password, passwordOut);
+  return StringToBstr(*m_Password, passwordOut);
 }
 
 

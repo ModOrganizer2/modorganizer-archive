@@ -573,7 +573,7 @@ bool ArchiveImpl::extract(LPCTSTR outputDirectory, ProgressCallback* progressCal
                           FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback)
 {
   m_ExtractCallback = new CArchiveExtractCallback(progressCallback, fileChangeCallback, errorCallback, m_PasswordCallback);
-  m_ExtractCallback->Init(m_ArchivePtr, GetUnicodeString(outputDirectory), &m_FileList[0], m_Password);
+  m_ExtractCallback->Init(m_ArchivePtr, GetUnicodeString(outputDirectory), &m_FileList[0], &m_Password);
   HRESULT result = m_ArchivePtr->Extract(nullptr, (UInt32)(Int32)(-1), false, m_ExtractCallback);
   switch (result) {
     case S_OK: {
