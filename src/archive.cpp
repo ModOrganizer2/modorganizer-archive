@@ -115,7 +115,7 @@ public:
   virtual Error getLastError() const { return m_LastError; }
 
   virtual bool open(LPCTSTR archiveName, PasswordCallback *passwordCallback);
-  virtual bool close();
+  virtual void close();
   virtual bool getFileList(FileData* const *&data, size_t &size);
   virtual bool extract(LPCTSTR outputDirectory, ProgressCallback *progressCallback,
                        FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback);
@@ -343,9 +343,7 @@ ArchiveImpl::ArchiveImpl()
 
 ArchiveImpl::~ArchiveImpl()
 {
-  clearFileList();
-  m_ArchivePtr.Release();
-  delete m_PasswordCallback;
+  close();
   delete m_Library;
 }
 
@@ -504,13 +502,15 @@ bool ArchiveImpl::open(LPCTSTR archiveName, PasswordCallback *passwordCallback)
 }
 
 
-bool ArchiveImpl::close()
+void ArchiveImpl::close()
 {
   if (m_ArchivePtr != nullptr) {
-    return m_ArchivePtr->Close() == S_OK;
-  } else {
-    return true;
+    m_ArchivePtr->Close();
   }
+  clearFileList();
+  m_ArchivePtr.Release();
+  delete m_PasswordCallback;
+  m_PasswordCallback = nullptr;
 }
 
 

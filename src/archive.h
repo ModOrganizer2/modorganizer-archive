@@ -72,7 +72,7 @@ public:
 
   virtual bool open(LPCTSTR archiveName, PasswordCallback *passwordCallback) = 0;
 
-  virtual bool close() = 0;
+  virtual void close() = 0;
 
   virtual bool getFileList(FileData* const *&data, size_t &size) = 0;
 
