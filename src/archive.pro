@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       -= core gui
+QT       -= gui
 
 #TARGET = archive
 TEMPLATE = lib
@@ -13,46 +13,32 @@ TEMPLATE = lib
   message("paths to required libraries need to be set up in LocalPaths.pri")
 }
 
-
 SOURCES += archive.cpp \
-    "$${SEVENZIPPATH}/CPP/Windows/DLL.cpp" \
-    "$${SEVENZIPPATH}/CPP/Windows/FileIO.cpp" \
-    "$${SEVENZIPPATH}/CPP/7zip/Common/FileStreams.cpp" \
-    "$${SEVENZIPPATH}/CPP/Windows/FileFind.cpp" \
-    "$${SEVENZIPPATH}/CPP/Common/MyVector.cpp" \
-    "$${SEVENZIPPATH}/CPP/Common/MyString.cpp" \
-    StdAfx.cpp \
-    "$${SEVENZIPPATH}/CPP/Common/StringConvert.cpp" \
-    "$${SEVENZIPPATH}/CPP/Windows/PropVariantConversions.cpp" \
-    "$${SEVENZIPPATH}/CPP/Windows/PropVariant.cpp" \
-    "$${SEVENZIPPATH}/CPP/Common/IntToString.cpp" \
-    "$${SEVENZIPPATH}/CPP/Windows/FileDir.cpp" \
-    "$${SEVENZIPPATH}/CPP/Windows/FileName.cpp" \
     extractcallback.cpp \
     callback.cpp \
     opencallback.cpp \
-    multioutputstream.cpp
-
+    multioutputstream.cpp \
+    interfaceguids.cpp \
+    propertyvariant.cpp \
+    inputstream.cpp
 
 HEADERS += archive.h\
-    "$${SEVENZIPPATH}/CPP/7zip/Common/FileStreams.h" \
-    StdAfx.h \
-    "$${SEVENZIPPATH}/CPP/Common/MyVector.h" \
-    "$${SEVENZIPPATH}/CPP/Common/MyString.h" \
-    "$${SEVENZIPPATH}/CPP/Windows/FileIO.h" \
-    "$${SEVENZIPPATH}/CPP/Windows/FileFind.h" \
-    "$${SEVENZIPPATH}/CPP/Windows/DLL.h" \
-    "$${SEVENZIPPATH}/CPP/Common/StringConvert.h" \
-    "$${SEVENZIPPATH}/CPP/Windows/PropVariantConversions.h" \
-    "$${SEVENZIPPATH}/CPP/Windows/PropVariant.h" \
-    "$${SEVENZIPPATH}/CPP/Common/IntToString.h" \
-    "$${SEVENZIPPATH}/CPP/Common/MyCom.h" \
-    "$${SEVENZIPPATH}/CPP/Windows/FileDir.h" \
-    "$${SEVENZIPPATH}/CPP/Windows/FileName.h" \
+    "$${SEVENZIPPATH}/C/Types.h" \
+    "$${SEVENZIPPATH}/CPP/7zip/IDecl.h" \
+    "$${SEVENZIPPATH}/CPP/7zip/IPassword.h" \
+    "$${SEVENZIPPATH}/CPP/7zip/IStream.h" \
+    "$${SEVENZIPPATH}/CPP/7zip/IProgress.h" \
+    "$${SEVENZIPPATH}/CPP/7zip/PropID.h" \
+    "$${SEVENZIPPATH}/CPP/7zip/Archive/IArchive.h" \
+    "$${SEVENZIPPATH}/CPP/Common/MyUnknown.h" \
+    "$${SEVENZIPPATH}/CPP/Common/Types.h" \
     extractcallback.h \
     callback.h \
     opencallback.h \
-    multioutputstream.h
+    multioutputstream.h \
+    propertyvariant.h \
+    inputstream.h \
+    unknown_impl.h
 
 
 OTHER_FILES += \
@@ -65,11 +51,8 @@ RC_FILE += \
 
 INCLUDEPATH += "$${SEVENZIPPATH}/CPP"
 
-PRECOMPILED_HEADER = stdafx.h
-
 DEFINES += _UNICODE _WINDLL WIN32 NOMINMAX
-
-LIBS += -lkernel32 -luser32 -loleaut32
+LIBS += -lkernel32 -luser32 -loleaut32 -lole32
 
 
 CONFIG(release, debug|release) {

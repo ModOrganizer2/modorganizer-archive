@@ -21,26 +21,43 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "extractcallback.h"
 
-#include "Windows/FileDir.h"
-#include "Windows/FileFind.h"
-#include "Windows/PropVariant.h"
-#include "Windows/PropVariantConversions.h"
-#include <string>
 #include "archive.h"
+#include "propertyvariant.h"
 
+#include <QDebug>
+#include <QDir>
 
-using namespace NWindows;
+#include <string>
 
-
-void CArchiveExtractCallback::Init(IInArchive *archiveHandler, const UString &directoryPath,
-                                   FileData* const *fileData, UString *password)
+CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback *progressCallback,
+    FileChangeCallback *fileChangeCallback,
+    ErrorCallback *errorCallback,
+    PasswordCallback *passwordCallback,
+    IInArchive *archiveHandler,
+    const QString &directoryPath,
+    FileData* const *fileData,
+    QString *password)
+  : m_ArchiveHandler(archiveHandler)
+  , m_Total(0)
+  , m_DirectoryPath(directoryPath)
+  , m_Extracting(false)
+  , m_Canceled(false)
+  //m_ProcessedFileInfo //not sure how to initialise this!
+  , m_OutFileStream()
+  , m_FileData(fileData)
+  , m_Password(password)
+  , m_ProgressCallback(progressCallback)
+  , m_FileChangeCallback(fileChangeCallback)
+  , m_ErrorCallback(errorCallback)
+  , m_PasswordCallback(passwordCallback)
 {
-  m_ArchiveHandler = archiveHandler;
-  m_DirectoryPath = directoryPath;
-  m_FileData = fileData;
-  m_Password = password;
-  m_Canceled = false;
-  NFile::NName::NormalizeDirPathPrefix(m_DirectoryPath);
+}
+
+CArchiveExtractCallback::~CArchiveExtractCallback()
+{
+  delete m_ProgressCallback;
+  delete m_FileChangeCallback;
+  delete m_ErrorCallback;
 }
 
 STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)
@@ -49,145 +66,114 @@ STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)
   return S_OK;
 }
 
-STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64 *value)
+STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64 *completed)
 {
-  m_Completed = *value;
-  float percentage = static_cast<float>(m_Completed) / static_cast<float>(m_Total);
-  (*m_ProgressCallback)(percentage);
+  if (m_ProgressCallback != nullptr) {
+    float percentage = static_cast<float>(*completed) / static_cast<float>(m_Total);
+    (*m_ProgressCallback)(percentage);
+  }
 
   return m_Canceled ? E_ABORT : S_OK;
 }
 
-
-static HRESULT IsArchiveItemProp(IInArchive *archive, UInt32 index, PROPID propID, bool &result)
+template <typename T> bool CArchiveExtractCallback::getOptionalProperty(UInt32 index, int property, T *result) const
 {
-  NCOM::CPropVariant prop;
-  RINOK(archive->GetProperty(index, propID, &prop));
-  if (prop.vt == VT_BOOL)
-    result = VARIANT_BOOLToBool(prop.boolVal);
-  else if (prop.vt == VT_EMPTY)
-    result = false;
-  else
-    return E_FAIL;
-  return S_OK;
+  PropertyVariant prop;
+  if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
+    qDebug() << "Error getting property" << property;
+    return false;
+  }
+  if (prop.is_empty()) {
+    return false;
+  }
+  *result = static_cast<T>(prop);
+  return true;
 }
 
-static HRESULT IsArchiveItemFolder(IInArchive *archive, UInt32 index, bool &result)
+template <typename T> T CArchiveExtractCallback::getProperty(UInt32 index, int property) const
 {
-  return IsArchiveItemProp(archive, index, kpidIsDir, result);
+  PropertyVariant prop;
+  if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
+    throw std::runtime_error("Error getting property");
+  }
+  return static_cast<T>(prop);
 }
-
-static const wchar_t *kEmptyFileAlias = L"[Content]";
-
 
 STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStream **outStream, Int32 askExtractMode)
 {
-  *outStream = 0;
+  *outStream = nullptr;
   m_OutFileStream.Release();
+
+  m_FullProcessedPaths.clear();
+  m_Extracting = false;
 
   if (askExtractMode != NArchive::NExtract::NAskMode::kExtract) {
     return S_OK;
   }
 
-  std::vector<std::wstring> filenames = m_FileData[index]->getAndClearOutputFileNames();
+  std::vector<QString> filenames = m_FileData[index]->getAndClearOutputFileNames();
   if (filenames.empty()) {
     return S_OK;
   }
 
-  // Get Attrib
+  try
   {
-    NCOM::CPropVariant prop;
-    RINOK(m_ArchiveHandler->GetProperty(index, kpidAttrib, &prop));
-    if (prop.vt == VT_EMPTY) {
-      m_ProcessedFileInfo.Attrib = 0;
-      m_ProcessedFileInfo.AttribDefined = false;
+    m_ProcessedFileInfo.AttribDefined = getOptionalProperty(index, kpidAttrib, &m_ProcessedFileInfo.Attrib);
+
+    m_ProcessedFileInfo.isDir = getProperty<bool>(index, kpidIsDir);
+
+    //Why do we do this? And if we are doing this, shouldn't we copy the created
+    //and accessed times (kpidATime, kpidCTime) as well?
+    m_ProcessedFileInfo.MTimeDefined = getOptionalProperty(index, kpidMTime, &m_ProcessedFileInfo.MTime);
+
+    if (m_ProcessedFileInfo.isDir) {
+      for (const QString &filename : filenames) {
+        // TODO: error handling
+        m_DirectoryPath.mkpath(filename);
+        m_FullProcessedPaths.push_back(m_DirectoryPath.absoluteFilePath(filename));
+      }
     } else {
-      if (prop.vt != VT_UI4) {
-        return E_FAIL;
-      }
-      m_ProcessedFileInfo.Attrib = prop.ulVal;
-      m_ProcessedFileInfo.AttribDefined = true;
-    }
-  }
-
-  RINOK(IsArchiveItemFolder(m_ArchiveHandler, index, m_ProcessedFileInfo.isDir));
-
-  // Get Modified Time
-  {
-    NCOM::CPropVariant prop;
-    RINOK(m_ArchiveHandler->GetProperty(index, kpidMTime, &prop));
-    m_ProcessedFileInfo.MTimeDefined = false;
-    switch(prop.vt)
-    {
-      case VT_EMPTY:
-        // _processedFileInfo.MTime = _utcMTimeDefault;
-        break;
-      case VT_FILETIME:
-        m_ProcessedFileInfo.MTime = prop.filetime;
-        m_ProcessedFileInfo.MTimeDefined = true;
-        break;
-      default:
-        return E_FAIL;
-    }
-  }
-
-  // Get Size - why? we don't do anything with it...
-  {
-    NCOM::CPropVariant prop;
-    RINOK(m_ArchiveHandler->GetProperty(index, kpidSize, &prop));
-    bool newFileSizeDefined = (prop.vt != VT_EMPTY);
-    UInt64 newFileSize;
-    if (newFileSizeDefined) {
-      newFileSize = ConvertPropVariantToUInt64(prop);
-    }
-  }
-
-  //Kludge for callbacks
-  UString filePath = filenames[0].c_str();
-
-  if (m_ProcessedFileInfo.isDir) {
-    for (const std::wstring &filename : filenames) {
-      // TODO: error handling
-      NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + filename.c_str());
-    }
-  } else {
-    // Create folders for file and delete old file
-    std::vector<UString> fullProcessedPaths;
-    for (const std::wstring &filename : filenames) {
-      const UString &filenameU = filename.c_str();
-      int slashPos = filenameU.ReverseFind(WCHAR_PATH_SEPARATOR);
-      if (slashPos >= 0) {
-        NFile::NDirectory::CreateComplexDirectory(m_DirectoryPath + filenameU.Left(slashPos));
-      }
-      UString fullProcessedPath = m_DirectoryPath + filenameU;
-      NFile::NFind::CFileInfoW fileInfo;
-      if (fileInfo.Find(fullProcessedPath)) {
-        if (!NFile::NDirectory::DeleteFileAlways(fullProcessedPath)) {
-          reportError(UString(L"can't delete output file ") + fullProcessedPath);
-          return E_ABORT;
+      for (const QString &filename : filenames) {
+        //If the filename contains a '/' we want to make the directory
+        int slashPos = filename.lastIndexOf('\\');
+        if (slashPos != -1) {
+          //Make the containing directory
+          m_DirectoryPath.mkpath(filename.left(slashPos));
         }
+        QString fullProcessedPath = m_DirectoryPath.absoluteFilePath(filename);
+        //If the file already exists, delete it
+        if (m_DirectoryPath.exists(filename)) {
+          if (! m_DirectoryPath.remove(filename)) {
+            reportError("can't delete output file " + fullProcessedPath);
+            return E_ABORT;
+          }
+        }
+        m_FullProcessedPaths.push_back(fullProcessedPath);
       }
-      fullProcessedPaths.push_back(fullProcessedPath);
+
+      m_OutFileStream = new MultiOutputStream;
+      if (!m_OutFileStream->Open(m_FullProcessedPaths)) {
+        reportError("can not open output file " + m_FullProcessedPaths[0]);
+        return E_ABORT;
+      }
+      //This is messy but I can't find another way of doing it. A simple
+      //assignment of m_outFileStream to *outStream doesn't increase the
+      //reference count.
+      CComPtr<MultiOutputStream> temp(m_OutFileStream);
+      *outStream = temp.Detach();
     }
 
-    //This is a kludge for the callbacks
-    m_DiskFilePath =  m_DirectoryPath + filePath;
-
-    m_OutFileStreamSpec = new MultiOutputStream;
-    CMyComPtr<ISequentialOutStream> outStreamLoc(m_OutFileStreamSpec);
-    if (!m_OutFileStreamSpec->Open(fullProcessedPaths, CREATE_ALWAYS)) {
-      reportError(UString(L"can not open output file ") + m_DiskFilePath);
-      return E_ABORT;
+    if (m_FileChangeCallback != nullptr) {
+      (*m_FileChangeCallback)(filenames[0]);
     }
-    m_OutFileStream = outStreamLoc;
-    *outStream = outStreamLoc.Detach();
-  }
 
-  if (m_FileChangeCallback != nullptr) {
-    (*m_FileChangeCallback)(filePath);
+    return S_OK;
   }
-
-  return S_OK;
+  catch (std::exception const &e)
+  {
+    qDebug() << "Caught exception " << e.what() << " in GetStream";
+  }
+  return E_FAIL;
 }
 
 STDMETHODIMP CArchiveExtractCallback::PrepareOperation(Int32 askExtractMode)
@@ -195,8 +181,7 @@ STDMETHODIMP CArchiveExtractCallback::PrepareOperation(Int32 askExtractMode)
   if (m_Canceled) {
     return E_ABORT;
   }
-  m_ExtractMode = askExtractMode == NArchive::NExtract::NAskMode::kExtract;
-
+  m_Extracting = askExtractMode == NArchive::NExtract::NAskMode::kExtract;
   return S_OK;
 }
 
@@ -205,45 +190,53 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
   if (operationResult != NArchive::NExtract::NOperationResult::kOK) {
     switch(operationResult) {
       case NArchive::NExtract::NOperationResult::kUnSupportedMethod: {
-        reportError(L"encoding method unsupported");
+        reportError("encoding method unsupported");
       } break;
       case NArchive::NExtract::NOperationResult::kCRCError: {
-        reportError(L"CRC error");
+        reportError("CRC error");
       } break;
       case NArchive::NExtract::NOperationResult::kDataError: {
-        reportError(L"Data error");
+        reportError("Data error");
       } break;
       default: {
-        reportError(L"Unknown error");
+        reportError("Unknown error");
       } break;
     }
   }
 
   if (m_OutFileStream != nullptr) {
-    if (m_ProcessedFileInfo.MTimeDefined)
-      m_OutFileStreamSpec->SetMTime(&m_ProcessedFileInfo.MTime);
-    RINOK(m_OutFileStreamSpec->Close());
+    if (m_ProcessedFileInfo.MTimeDefined) {
+      m_OutFileStream->SetMTime(&m_ProcessedFileInfo.MTime);
+    }
+    RINOK(m_OutFileStream->Close());
   }
 
   m_OutFileStream.Release();
-  if (m_ExtractMode && m_ProcessedFileInfo.AttribDefined) {
-    NFile::NDirectory::MySetFileAttributes(m_DiskFilePath, m_ProcessedFileInfo.Attrib);
-  }
 
+  if (m_Extracting && m_ProcessedFileInfo.AttribDefined) {
+    //this is moderately annoying. I can't do this on the file handle because if
+    //the file in question is a directory there isn't a file handle.
+    //Also I'd like to convert the attributes to QT attributes but I'm not sure
+    //if that's possible. Hence the conversions and strange string.
+    for (QString const &filename : m_FullProcessedPaths) {
+      std::wstring const fn = L"\\\\?\\" + QDir::toNativeSeparators(filename).toStdWString();
+      //Should probably log any errors here somehow
+      ::SetFileAttributesW(fn.c_str(), m_ProcessedFileInfo.Attrib);
+    }
+  }
   return S_OK;
 }
 
 
 STDMETHODIMP CArchiveExtractCallback::CryptoGetTextPassword(BSTR *passwordOut)
 {
-  if (m_Password->IsEmpty() && (m_PasswordCallback != nullptr)) {
-    std::vector<char> passwordBuffer(MAX_PASSWORD_LENGTH + 1);
-    (*m_PasswordCallback)(&passwordBuffer[0]);
-    *m_Password = GetUnicodeString(&passwordBuffer[0]);
+  // if we've already got a password, don't ask again (and again...)
+  if (m_Password->isEmpty() && m_PasswordCallback != nullptr) {
+    (*m_PasswordCallback)(m_Password);
   }
 
-  // reuse the password entered on opening, we don't ask the user twice
-  return StringToBstr(*m_Password, passwordOut);
+  *passwordOut = ::SysAllocString(m_Password->toStdWString().c_str());
+  return *passwordOut != 0 ? S_OK : E_OUTOFMEMORY;
 }
 
 
@@ -253,7 +246,7 @@ void CArchiveExtractCallback::SetCanceled(bool aCanceled)
 }
 
 
-void CArchiveExtractCallback::reportError(const UString &message)
+void CArchiveExtractCallback::reportError(const QString &message)
 {
   if (m_ErrorCallback != nullptr) {
     (*m_ErrorCallback)(message);

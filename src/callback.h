@@ -22,9 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #define CALLBACK_H
 
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
+class QString;
 
 template <typename RET, typename PAR>
 class Callback
@@ -86,9 +84,9 @@ private:
 static const int MAX_PASSWORD_LENGTH = 256;
 
 typedef Callback<void, float> ProgressCallback;
-typedef Callback<void, LPSTR> PasswordCallback;
-typedef Callback<void, LPCWSTR> FileChangeCallback;
-typedef Callback<void, LPCWSTR> ErrorCallback;
+typedef Callback<void, QString *> PasswordCallback;
+typedef Callback<void, QString const &> FileChangeCallback;
+typedef Callback<void, QString const &> ErrorCallback;
 
 
 #endif // CALLBACK_H
