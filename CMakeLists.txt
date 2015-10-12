@@ -1,5 +1,7 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
+PROJECT(archive CXX)
+
 SET(DEPENDENCIES_DIR CACHE PATH "")
 
 # hint to find qt in dependencies path
