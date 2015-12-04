@@ -22,73 +22,65 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef EXTRACTCALLBACK_H
 #define EXTRACTCALLBACK_H
 
+#include "callback.h"
 #include "multioutputstream.h"
-
-#include "Common/StringConvert.h"
+#include "unknown_impl.h"
 
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 
-#include "7zip/Common/FileStreams.h"
-#include "callback.h"
+#include <QDir>
+class QString;
 
+#include <atlbase.h>
 
 class FileData;
 
 class CArchiveExtractCallback: public IArchiveExtractCallback,
-                               public ICryptoGetTextPassword,
-                               public CMyUnknownImp
+                               public ICryptoGetTextPassword
 {
+
+  //A note: It appears that the IArchiveExtractCallback interface includes the
+  //IProgress interface, swo we need to respond to it
+  UNKNOWN_3_INTERFACE(IArchiveExtractCallback,
+                      ICryptoGetTextPassword,
+                      IProgress);
+
 public:
 
   CArchiveExtractCallback(ProgressCallback *progressCallback,
                           FileChangeCallback *fileChangeCallback,
                           ErrorCallback *errorCallback,
-                          PasswordCallback *passwordCallback)
-    : m_Canceled(false)
-    , m_FileData(nullptr)
-    , m_ProgressCallback(progressCallback)
-    , m_FileChangeCallback(fileChangeCallback)
-    , m_ErrorCallback(errorCallback)
-    , m_PasswordCallback(passwordCallback)
-  {}
+                          PasswordCallback *passwordCallback,
+                          IInArchive *archiveHandler,
+                          const QString &directoryPath,
+                          FileData * const *fileData,
+                          QString *password);
 
-  virtual ~CArchiveExtractCallback() { delete m_ProgressCallback; delete m_FileChangeCallback; delete m_ErrorCallback; }
+  virtual ~CArchiveExtractCallback();
 
-  MY_UNKNOWN_IMP1(ICryptoGetTextPassword)
+  void SetCanceled(bool aCanceled);
 
-  // IProgress
-  STDMETHOD(SetTotal)(UInt64 size);
-  STDMETHOD(SetCompleted)(const UInt64 *completeValue);
-
-  // IArchiveExtractCallback
-  STDMETHOD(GetStream)(UInt32 index, ISequentialOutStream **outStream, Int32 askExtractMode);
-  STDMETHOD(PrepareOperation)(Int32 askExtractMode);
-  STDMETHOD(SetOperationResult)(Int32 resultEOperationResult);
+  INTERFACE_IArchiveExtractCallback(;)
 
   // ICryptoGetTextPassword
   STDMETHOD(CryptoGetTextPassword)(BSTR *aPassword);
 
-  void SetCanceled(bool aCanceled);
+private:
 
-public:
+  void reportError(const QString &message);
 
-  void Init(IInArchive *archiveHandler, const UString &directoryPath, FileData* const *fileData, UString *password);
+  template <typename T> bool getOptionalProperty(UInt32 index, int property, T *result) const;
+  template <typename T> T getProperty(UInt32 index, int property) const;
 
 private:
 
-  void reportError(const UString &message);
+  CComPtr<IInArchive> m_ArchiveHandler;
 
-private:
+  UInt64 m_Total;
 
-  CMyComPtr<IInArchive> m_ArchiveHandler;
-
-  unsigned __int64 m_Completed;
-  unsigned __int64 m_Total;
-
-  UString m_DirectoryPath;
-  UString m_DiskFilePath;
-  bool m_ExtractMode;
+  QDir m_DirectoryPath;
+  bool m_Extracting;
   bool m_Canceled;
 
   struct CProcessedFileInfo {
@@ -99,11 +91,12 @@ private:
     bool MTimeDefined;
   } m_ProcessedFileInfo;
 
-  MultiOutputStream *m_OutFileStreamSpec;
-  CMyComPtr<ISequentialOutStream> m_OutFileStream;
+  CComPtr<MultiOutputStream> m_OutFileStream;
+
+  std::vector<QString> m_FullProcessedPaths;
 
   FileData* const *m_FileData;
-  UString *m_Password;
+  QString *m_Password;
 
   ProgressCallback *m_ProgressCallback;
   FileChangeCallback *m_FileChangeCallback;

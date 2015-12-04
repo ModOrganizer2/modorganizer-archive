@@ -22,61 +22,57 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef OPENCALLBACK_H
 #define OPENCALLBACK_H
 
+#include "callback.h"
+#include "unknown_impl.h"
 
-#include "Common/StringConvert.h"
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
-#include "7zip/Common/FileStreams.h"
-#include "Windows/FileFind.h"
-#include "callback.h"
-#include <stdexcept>
 
+#include <QDir>
+#include <QFileInfo>
+
+#include <string>
 
 class CArchiveOpenCallback: public IArchiveOpenCallback,
                             public IArchiveOpenVolumeCallback,
                             public ICryptoGetTextPassword,
-                            public IArchiveOpenSetSubArchiveName,
-                            public CMyUnknownImp
+                            public IArchiveOpenSetSubArchiveName
 {
+
+  UNKNOWN_4_INTERFACE(IArchiveOpenCallback,
+                      IArchiveOpenVolumeCallback,
+                      ICryptoGetTextPassword,
+                      IArchiveOpenSetSubArchiveName);
 
 public:
 
-  MY_UNKNOWN_IMP3(
-    IArchiveOpenVolumeCallback,
-    ICryptoGetTextPassword,
-    IArchiveOpenSetSubArchiveName
-  )
-
-  CArchiveOpenCallback(PasswordCallback* passwordCallback);
+  CArchiveOpenCallback(PasswordCallback* passwordCallback, QFileInfo const &fileinfo);
 
   ~CArchiveOpenCallback() { }
+
+  QString GetPassword() const { return m_Password; }
 
   INTERFACE_IArchiveOpenCallback(;)
   INTERFACE_IArchiveOpenVolumeCallback(;)
 
+  // ICryptoGetTextPassword interface
   STDMETHOD(CryptoGetTextPassword)(BSTR *password);
+  //Not implemented STDMETHOD(CryptoGetTextPassword2)(Int32 *passwordIsDefined, BSTR *password);
+
+  // IArchiveOpenSetSubArchiveName interface
   STDMETHOD(SetSubArchiveName)(const wchar_t *name);
-
-  void LoadFileInfo(const UString &path, const UString &fileName);
-
-  UString GetPassword() const { return m_Password; }
 
 private:
 
   PasswordCallback *m_PasswordCallback;
-  UString m_Password;
+  QString m_Password;
 
-  UString m_Path;
-  UString m_FileName;
+  QDir m_Path;
+  QFileInfo m_FileInfo;
 
   bool m_SubArchiveMode;
   std::wstring m_SubArchiveName;
 
-  NWindows::NFile::NFind::CFileInfoW m_FileInfo;
-
 };
-
-
-
 
 #endif // OPENCALLBACK_H

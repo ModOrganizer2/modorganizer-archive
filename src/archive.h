@@ -22,10 +22,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef ARCHIVE_H
 #define ARCHIVE_H
 
-
 #include "callback.h"
 
-#include <string>
+class QString;
+
+#include <stdint.h>
 #include <vector>
 
 #ifdef _WINDLL
@@ -37,10 +38,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 class FileData {
 public:
-  virtual LPCWSTR getFileName() const = 0;
-  virtual void addOutputFileName(LPCWSTR fileName) = 0;
-  virtual std::vector<std::wstring> getAndClearOutputFileNames() = 0;
-  virtual UINT64 getCRC() const = 0;
+  virtual QString getFileName() const = 0;
+  virtual void addOutputFileName(QString const &fileName) = 0;
+  virtual std::vector<QString> getAndClearOutputFileNames() = 0;
+  virtual uint64_t getCRC() const = 0;
   virtual bool isDirectory() const = 0;
 };
 
@@ -70,13 +71,13 @@ public:
 
   virtual Error getLastError() const = 0;
 
-  virtual bool open(LPCTSTR archiveName, PasswordCallback *passwordCallback) = 0;
+  virtual bool open(QString const &archiveName, PasswordCallback *passwordCallback) = 0;
 
   virtual void close() = 0;
 
   virtual bool getFileList(FileData* const *&data, size_t &size) = 0;
 
-  virtual bool extract(LPCTSTR outputDirectory, ProgressCallback *progressCallback,
+  virtual bool extract(QString const &outputDirectory, ProgressCallback *progressCallback,
                        FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback) = 0;
 
   virtual void cancel() = 0;
@@ -97,7 +98,6 @@ private:
 
 /// factory function for archive-objects
 extern "C" DLLEXPORT Archive* CreateArchive();
-
 
 
 #endif // ARCHIVE_H
