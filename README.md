@@ -16,7 +16,7 @@ Returns false if there was a problem initialising 7zip. This probably means the 
     
 This attempts to open the specified archive file. It should manage to open pretty much anything 7zip recognises. It returns `true` on success.
 
-If passwordCallback is (specified and) not null, it will be called whenever a password is needed when decoding the archive. Note that although some archive formats don't need the password till decoding, some need it straight away. See `extract` for what to do in the callback.  _Note to self: 2nd parameter should be optional_
+* `passwordChangeCallback(QString *)` (if not null) is called if a password is needed. Get the password from the user and set the passed in pointer to point to the entered password. Note that this may be called during `extract` rather than during `open`. If you don't supply this callback, archives with passwords will be unreadable. _Note to self: This parameter should be optional_
 
 Once you have opened, the archive, you will want to find out what files are in it, and to extract them.
 
@@ -33,14 +33,13 @@ Gets the error code associated with the last error.
     bool Archive::extract(QString const &outputDirectory, ProgressCallback *progressCallback,
                           FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback)
 
-Extract files from the current archive (see getFileList) into outputDirectory. During the extraction,
+Extract files from the current archive (see getFileList) into outputDirectory. During the extraction:
 
-* `passwordChangeCallback(QString &)` is called if a password is needed.
-* `progressCallback` is called ---
-* `fileChangeCallback` is called --- 
-* `errorCallback` is called if an error occured. There's not much you can do here beyond displaying an error if you so wish.
+* `progressCallback(float)` is called from time to time so you can update a progress meter. The value passed is the proportion of the file processed (i.e. 0 to 1).
+* `fileChangeCallback(QString const &)` is called whenever the file being processed is changed. You can use this to update the progress meter.
+* `errorCallback(QString const &)` is called if an error occured, with an error message. There's not much you can do here beyond displaying an error if you so wish. This will also result in a failure return from extract.
 
-Note that if you do not wish to deal with a specific callback, simply pass`nullptr`.
+Note that if you do not wish to deal with a specific callback, simply pass `nullptr`.
 
 After the extract returns, you may call getFileList again to get a clean copy of the file list so you can extract different files from the archive (this is what the fomod installer does).
 
@@ -52,16 +51,26 @@ Call this from any of the callbacks to cancel a running extraction. This will ca
 
 Closes the current archive and release any resources associated with it.
 
+## The FileData class
 
-class FileData {
-public:
-  virtual QString getFileName() const = 0;
-  virtual void addOutputFileName(QString const &fileName) = 0;
-  virtual std::vector<QString> getAndClearOutputFileNames() = 0;
-  virtual uint64_t getCRC() const = 0;
-  virtual bool isDirectory() const = 0;
-};
+As you have seen above, the `getFileList` method returns a pointer to an array of entries about all the files in the archive. Each `FileData` entry supports the following methods
 
+    QString getFileName() const
+    
+This returns the name of the file in the archive.
 
-#endif // ARCHIVE_H
+    void addOutputFileName(QString const &fileName)
 
+Adds a secondary (or tertiary...) output location for this file. This needs to be specified relative the the `outputDirectory` passed to `extract`.
+
+    std::vector<QString> getAndClearOutputFileNames()
+
+Returns the list of output filenames for this file, then clears it. This is normally used inside the `extract` function.
+
+    uint64_t getCRC() const
+    
+Returns the CRC stored for the file, in case you wish to check it.
+
+    bool isDirectory() const
+
+Directory entries get stored in the archive as well as normal files.
