@@ -357,7 +357,7 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
     buff.reserve(m_MaxSignatureLen);
     UInt32 act;
     file->Seek(0, STREAM_SEEK_SET, nullptr);
-    file->Read(buff.data(), m_MaxSignatureLen, &act);
+    file->Read(buff.data(), static_cast<UInt32>(m_MaxSignatureLen), &act);
     file->Seek(0, STREAM_SEEK_SET, nullptr);
     std::string signature = std::string(buff.data(), act);
     //Get the first iterator that is strictly > the signature we're looking for.
