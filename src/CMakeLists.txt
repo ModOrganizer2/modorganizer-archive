@@ -33,7 +33,6 @@ SET(archive_HDRS
     propertyvariant.h
     inputstream.h
     unknown_impl.h
-    ${SEVENZIP_ROOT_DIR}/C/Types.h
     ${SEVENZIP_ROOT_DIR}/CPP/7zip/IDecl.h
     ${SEVENZIP_ROOT_DIR}/CPP/7zip/IPassword.h
     ${SEVENZIP_ROOT_DIR}/CPP/7zip/IStream.h
@@ -41,7 +40,6 @@ SET(archive_HDRS
     ${SEVENZIP_ROOT_DIR}/CPP/7zip/PropID.h
     ${SEVENZIP_ROOT_DIR}/CPP/7zip/Archive/IArchive.h
     ${SEVENZIP_ROOT_DIR}/CPP/Common/MyUnknown.h
-    ${SEVENZIP_ROOT_DIR}/CPP/Common/Types.h
   )
 
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)

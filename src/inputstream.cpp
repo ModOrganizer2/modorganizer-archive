@@ -1,3 +1,4 @@
+#include <Unknwn.h>
 #include "inputstream.h"
 
 #include <QDir>
