@@ -18,7 +18,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <Unknwn.h>
+
 #include "archive.h"
 
 #include "extractcallback.h"
@@ -37,8 +37,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <sstream>
 #include <unordered_map>
 #include <vector>
-
-namespace PropID = NArchive::NHandlerPropID;
 
 class FileDataImpl : public FileData {
   friend class Archive;
@@ -209,13 +207,13 @@ HRESULT ArchiveImpl::loadFormats()
   {
     ArchiveFormatInfo item;
 
-    item.m_Name = readHandlerProperty<std::wstring>(i, PropID::kName);
+    item.m_Name = readHandlerProperty<std::wstring>(i, NArchive::kName);
 
-    item.m_ClassID = readHandlerProperty<GUID>(i, PropID::kClassID);
+    item.m_ClassID = readHandlerProperty<GUID>(i, NArchive::kClassID);
 
     //Should split up the extensions and map extension to type, and see what we get from that for preference
     //then try all extensions anyway...
-    item.m_Extensions = readHandlerProperty<std::wstring>(i, PropID::kExtension);
+    item.m_Extensions = readHandlerProperty<std::wstring>(i, NArchive::kExtension);
 
     //This is unnecessary currently for our purposes. Basically, for each
     //extension, there's an 'addext' which, if set (to other than *) means that
@@ -225,9 +223,9 @@ HRESULT ArchiveImpl::loadFormats()
     //which means that tbz2 and tbz should uncompress to a tar file which can be
     //further processed as if it were a tar file. Having said which, we don't
     //need to support this at all, so I'm storing it but ignoring it.
-    item.m_AdditionalExtensions = readHandlerProperty<std::wstring>(i, PropID::kAddExtension);
+    item.m_AdditionalExtensions = readHandlerProperty<std::wstring>(i, NArchive::kAddExtension);
 
-    std::string signature = readHandlerProperty<std::string>(i, PropID::kSignature);
+    std::string signature = readHandlerProperty<std::string>(i, NArchive::kStartSignature);
     if (! signature.empty()) {
       item.m_StartSignature = signature;
       if (m_MaxSignatureLen < signature.size()) {

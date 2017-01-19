@@ -1,4 +1,3 @@
-#include <Unknwn.h>
 #include "multioutputstream.h"
 
 #include <QDir>
