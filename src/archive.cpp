@@ -355,7 +355,7 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
       std::vector<char> buff;
       buff.reserve(m_MaxSignatureLen);
       UInt32 act;
-      file->Seek(signatureInfo.second.m_SignatureOffset, STREAM_SEEK_SET, nullptr);
+      file->Seek(0, STREAM_SEEK_SET, nullptr);
       file->Read(buff.data(), static_cast<UInt32>(m_MaxSignatureLen), &act);
       file->Seek(0, STREAM_SEEK_SET, nullptr);
       std::string signature = std::string(buff.data(), act);
@@ -408,7 +408,7 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
     FormatMap::const_iterator map_iter = m_FormatMap.find(ext);
     if (map_iter != m_FormatMap.end()) {
       formats = &map_iter->second;
-      if (formats != nullptr && formats->size() == 1) {
+      if (formats != nullptr) {
         if (m_ArchivePtr == nullptr) {
           //OK, we have some potential formats. If there is only one, try it now. If
           //there are multiple formats, we'll try by signature lookup first.
