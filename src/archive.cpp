@@ -156,9 +156,10 @@ private:
   {
     CLSID m_ClassID;
     std::wstring m_Name;
-    std::string m_StartSignature;
+    std::vector<std::string> m_Signatures;
     std::wstring m_Extensions;
     std::wstring m_AdditionalExtensions;
+    UInt32 m_SignatureOffset;
   };
 
   typedef std::vector<ArchiveFormatInfo> Formats;
@@ -228,13 +229,33 @@ HRESULT ArchiveImpl::loadFormats()
     item.m_AdditionalExtensions = readHandlerProperty<std::wstring>(i, PropID::kAddExtension);
 
     std::string signature = readHandlerProperty<std::string>(i, PropID::kSignature);
-    if (! signature.empty()) {
-      item.m_StartSignature = signature;
+    if (!signature.empty()) {
+      item.m_Signatures.push_back(signature);
       if (m_MaxSignatureLen < signature.size()) {
         m_MaxSignatureLen = signature.size();
       }
       m_SignatureMap[signature] = item;
     }
+
+    std::string multiSig = readHandlerProperty<std::string>(i, PropID::kMultiSignature);
+    const char *multiSigBytes = multiSig.c_str();
+    unsigned size = multiSig.length();
+    while (size > 0) {
+      unsigned len = *multiSigBytes++;
+      size--;
+      if (len > size) break;
+      std::string sig(multiSigBytes, multiSigBytes + len);
+      multiSigBytes = multiSigBytes + len;
+      size -= len;
+      item.m_Signatures.push_back(sig);
+      if (m_MaxSignatureLen < sig.size()) {
+        m_MaxSignatureLen = sig.size();
+      }
+      m_SignatureMap[sig] = item;
+    }
+
+    UInt32 offset = readHandlerProperty<UInt32>(i, PropID::kSignatureOffset);
+    item.m_SignatureOffset = offset;
 
     //Now split the extension up from the space separated string and create
     //a map from each extension to the possible formats
@@ -298,6 +319,8 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
 {
   m_ArchiveName = archiveName; //Just for debugging, not actually used...
 
+  Formats formatList = m_Formats;
+
   //I sincerely hope QFileInfo works with v. long. paths (although 7z original
   //doesn't either...)
   QFileInfo finfo(archiveName);
@@ -323,74 +346,118 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
 
   // Try to open the archive
 
-  //FIXME Would it be more sensible to try the signature first? Then iterate
-  //over the formats
+  bool sigMismatch = false;
 
-  // determine archive type based on extension
-  Formats const *formats = nullptr;
   {
-    QString extension = finfo.suffix().toLower();
-    std::wstring ext(extension.toStdWString());
-    FormatMap::const_iterator map_iter = m_FormatMap.find(ext);
-    if (map_iter != m_FormatMap.end()) {
-      formats = &map_iter->second;
-    }
-  }
-
-  //OK, we have some potential formats. If there is only one, try it now. If
-  //there are multiple formats, we'll try by signature lookup first.
-
-  if (formats != nullptr && formats->size() == 1) {
-    if (m_CreateObjectFunc(&formats->front().m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
-      m_LastError = ERROR_LIBRARY_ERROR;
-      return false;
-    }
-
-    if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
-      qDebug() << "Failed to open " << archiveName << " using " <<
-                  QString::fromStdWString(formats->front().m_Name) << " (from extension)";
-      m_ArchivePtr.Release();
-    }
-  }
-
-  if (m_ArchivePtr == nullptr) {
-    //Read the signature of the file and look that up.
-    std::vector<char> buff;
-    buff.reserve(m_MaxSignatureLen);
-    UInt32 act;
-    file->Seek(0, STREAM_SEEK_SET, nullptr);
-    file->Read(buff.data(), static_cast<UInt32>(m_MaxSignatureLen), &act);
-    file->Seek(0, STREAM_SEEK_SET, nullptr);
-    std::string signature = std::string(buff.data(), act);
     //Get the first iterator that is strictly > the signature we're looking for.
-    SignatureMap::const_iterator fmt = m_SignatureMap.upper_bound(signature);
-    if (fmt != m_SignatureMap.begin()) {
-      --fmt;
-      //this must be <= to our key. Again, given we have unique signatures in here,
-      //there shouldn't be any issue with spuriously matching.
-      if (fmt->first == std::string(buff.data(), fmt->first.size())) {
-        if (m_CreateObjectFunc(&fmt->second.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
+    for (auto signatureInfo : m_SignatureMap) {
+      //Read the signature of the file and look that up.
+      std::vector<char> buff;
+      buff.reserve(m_MaxSignatureLen);
+      UInt32 act;
+      file->Seek(signatureInfo.second.m_SignatureOffset, STREAM_SEEK_SET, nullptr);
+      file->Read(buff.data(), static_cast<UInt32>(m_MaxSignatureLen), &act);
+      file->Seek(0, STREAM_SEEK_SET, nullptr);
+      std::string signature = std::string(buff.data(), act);
+      if (signatureInfo.first == std::string(buff.data(), signatureInfo.first.size())) {
+        if (m_CreateObjectFunc(&signatureInfo.second.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
           m_LastError = ERROR_LIBRARY_ERROR;
           return false;
         }
 
         if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
           qDebug() << "Failed to open " << archiveName << " using " <<
-                      QString::fromStdWString(fmt->second.m_Name) << " (from signature)";
+            QString::fromStdWString(signatureInfo.second.m_Name) << " (from signature)";
           m_ArchivePtr.Release();
-        } else {
+        }
+        else {
           qDebug() << "Opened " << archiveName << " using " <<
-                      QString::fromStdWString(fmt->second.m_Name) << " (from signature)";
+            QString::fromStdWString(signatureInfo.second.m_Name) << " (from signature)";
+          QString extension = finfo.suffix().toLower();
+          std::wstring ext(extension.toStdWString());
+          std::wistringstream s(signatureInfo.second.m_Extensions);
+          std::wstring t;
+          bool found = false;
+          while (s >> t) {
+            if (t == ext) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            qWarning() << "WARNING: The extension of this file did not match the expected extensions for this format! You may want to inform the mod author.";
+            sigMismatch = true;
+          }
         }
         //Arguably we should give up here if it's not OK if 7zip can't even start
         //to decode even though we've found the format from the signature.
         //Sadly, the 7zip API documentation is pretty well non-existant.
+        break;
+      }
+      std::vector<ArchiveFormatInfo>::iterator iter = std::find_if(formatList.begin(), formatList.end(), [=](ArchiveFormatInfo a) -> bool { return a.m_Name == signatureInfo.second.m_Name; });
+      if (iter != formatList.end())
+        formatList.erase(iter);
+    }
+  }
+
+  {
+    // determine archive type based on extension
+    Formats const *formats = nullptr;
+    QString extension = finfo.suffix().toLower();
+    std::wstring ext(extension.toStdWString());
+    FormatMap::const_iterator map_iter = m_FormatMap.find(ext);
+    if (map_iter != m_FormatMap.end()) {
+      formats = &map_iter->second;
+      if (formats != nullptr && formats->size() == 1) {
+        if (m_ArchivePtr == nullptr) {
+          //OK, we have some potential formats. If there is only one, try it now. If
+          //there are multiple formats, we'll try by signature lookup first.
+          for (ArchiveFormatInfo format : *formats) {
+            if (m_CreateObjectFunc(&format.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
+              m_LastError = ERROR_LIBRARY_ERROR;
+              return false;
+            }
+
+            if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
+              qDebug() << "Failed to open " << archiveName << " using " <<
+                QString::fromStdWString(format.m_Name) << " (from extension)";
+              m_ArchivePtr.Release();
+            }
+            else {
+              qDebug() << "Opened " << archiveName << " using " <<
+                QString::fromStdWString(format.m_Name) << " (from extension)";
+              break;
+            }
+
+            std::vector<ArchiveFormatInfo>::iterator iter = std::find_if(formatList.begin(), formatList.end(), [=](ArchiveFormatInfo a) -> bool { return a.m_Name == format.m_Name; });
+            if (iter != formatList.end())
+              formatList.erase(iter);
+          }
+        } else if (sigMismatch) {
+          QStringList formatList;
+          for (ArchiveFormatInfo format : *formats)
+            formatList.append(QString::fromStdWString(format.m_Name));
+          qWarning() << "WARNING: The format(s) expected for this extension are: " << formatList.join(", ");
+        }
       }
     }
-    //If we get here, we have a file which doesn't have an identifiable
-    //signature and doesn't have a unique extension. We *could* iterate over
-    //all the formats and try them, but that seems excessive. In any case, the
-    //7-zip documentation doesn't document informatio I used to get the formats.
+  }
+
+  if (m_ArchivePtr == nullptr) {
+    qWarning() << "WARNING: We're trying to open an archive but could not recognize the extension or signature.";
+    qDebug() << "Attempting to open the file with the remaining formats as a fallback...";
+    for (auto format : formatList) {
+      if (m_CreateObjectFunc(&format.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
+        m_LastError = ERROR_LIBRARY_ERROR;
+        return false;
+      }
+      if (m_ArchivePtr->Open(file, 0, openCallbackPtr) == S_OK) {
+        qDebug() << "Opened " << archiveName << " using " <<
+          QString::fromStdWString(format.m_Name) << " (scan fallback)";
+        qWarning() << "NOTE: This archive likely has an incorrect extension. Please contact the mod author.";
+        break;
+      }
+    }
   }
 
   if (m_ArchivePtr == nullptr) {
