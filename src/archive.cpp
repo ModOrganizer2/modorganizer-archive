@@ -456,7 +456,8 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
           QString::fromStdWString(format.m_Name) << " (scan fallback)";
         qWarning() << "NOTE: This archive likely has an incorrect extension. Please contact the mod author.";
         break;
-      }
+      } else
+        m_ArchivePtr.Release();
     }
   }
 
