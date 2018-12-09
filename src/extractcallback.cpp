@@ -220,6 +220,10 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
     //if that's possible. Hence the conversions and strange string.
     for (QString const &filename : m_FullProcessedPaths) {
       std::wstring const fn = L"\\\\?\\" + QDir::toNativeSeparators(filename).toStdWString();
+      //If the attributes are POSIX-based, fix that
+      if (m_ProcessedFileInfo.Attrib & 0xF0000000)
+        m_ProcessedFileInfo.Attrib &= 0x7FFF;
+
       //Should probably log any errors here somehow
       ::SetFileAttributesW(fn.c_str(), m_ProcessedFileInfo.Attrib);
     }
