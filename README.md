@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/hdthueiiuedeb38f?svg=true)](https://ci.appveyor.com/project/Modorganizer2/modorganizer-archive)
+
 # modorganizer-archive
 
 This module provides a wrapper round the 7zip 7z.dll allowing easy(ish) access to the contents of an archive.
