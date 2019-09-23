@@ -29,12 +29,13 @@ class QString;
 #include <stdint.h>
 #include <vector>
 
-#ifdef _WINDLL
-#define DLLEXPORT _declspec(dllexport)
-#else
-#define DLLEXPORT _declspec(dllimport)
+#ifndef DLLEXPORT
+  #ifdef _WINDLL
+  #define DLLEXPORT _declspec(dllexport)
+  #else
+  #define DLLEXPORT _declspec(dllimport)
+  #endif
 #endif
-
 
 class FileData {
 public:
