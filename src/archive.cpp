@@ -239,7 +239,7 @@ HRESULT ArchiveImpl::loadFormats()
 
     std::string multiSig = readHandlerProperty<std::string>(i, PropID::kMultiSignature);
     const char *multiSigBytes = multiSig.c_str();
-    unsigned size = multiSig.length();
+    std::size_t size = multiSig.length();
     while (size > 0) {
       unsigned len = *multiSigBytes++;
       size--;

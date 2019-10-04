@@ -29,6 +29,47 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <string>
 
+QString operationResultToString(Int32 operationResult)
+{
+  namespace R = NArchive::NExtract::NOperationResult;
+
+  switch(operationResult)
+  {
+    case R::kOK:
+      return {};
+
+    case R::kUnsupportedMethod:
+      return "Encoding method unsupported";
+
+    case R::kDataError:
+      return "Data error";
+
+    case R::kCRCError:
+      return "CRC error";
+
+    case R::kUnavailable:
+      return "Unavailable";
+
+    case R::kUnexpectedEnd:
+      return "Unexpected end of archive";
+
+    case R::kDataAfterEnd:
+      return "Data after end of archive";
+
+    case R::kIsNotArc:
+      return "Not an ARC";
+
+    case R::kHeadersError:
+      return "Bad headers";
+
+    case R::kWrongPassword:
+      return "Wrong password";
+
+    default:
+      return QString("Unknown error %1").arg(operationResult);
+  }
+}
+
 CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback *progressCallback,
     FileChangeCallback *fileChangeCallback,
     ErrorCallback *errorCallback,
@@ -188,20 +229,7 @@ STDMETHODIMP CArchiveExtractCallback::PrepareOperation(Int32 askExtractMode)
 STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
 {
   if (operationResult != NArchive::NExtract::NOperationResult::kOK) {
-    switch(operationResult) {
-      case NArchive::NExtract::NOperationResult::kUnsupportedMethod: {
-        reportError("encoding method unsupported");
-      } break;
-      case NArchive::NExtract::NOperationResult::kCRCError: {
-        reportError("CRC error");
-      } break;
-      case NArchive::NExtract::NOperationResult::kDataError: {
-        reportError("Data error");
-      } break;
-      default: {
-        reportError("Unknown error");
-      } break;
-    }
+    reportError(operationResultToString(operationResult));
   }
 
   if (m_OutFileStream != nullptr) {
