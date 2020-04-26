@@ -578,7 +578,7 @@ void ArchiveImpl::cancel()
 }
 
 
-extern "C" DLLEXPORT Archive *CreateArchive()
+extern "C" Archive *CreateArchive()
 {
   return new ArchiveImpl;
 }

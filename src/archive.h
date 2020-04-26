@@ -30,7 +30,7 @@ class QString;
 #include <vector>
 
 #ifndef DLLEXPORT
-  #ifdef _WINDLL
+  #ifdef MODORGANIZER_ARCHIVE_BUILDING
   #define DLLEXPORT _declspec(dllexport)
   #else
   #define DLLEXPORT _declspec(dllimport)
