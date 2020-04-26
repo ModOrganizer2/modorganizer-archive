@@ -12,10 +12,17 @@ FILEOS          VOS__WINDOWS32
 FILETYPE        VFT_DLL
 FILESUBTYPE     VFT2_UNKNOWN
 BEGIN
-    BLOCK "StringFileInfo"
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
     BEGIN
-        VALUE "CompanyName", "Tannin"
-        VALUE "FileVersion", VER_FILEVERSION_STR
-    END
+    VALUE "CompanyName", "Mod Organizer 2 Team"
+    VALUE "FileVersion", VER_FILEVERSION_STR
+  END
+END
 
+BLOCK "VarFileInfo"
+  BEGIN
+  VALUE "Translation", 0x0409, 1200
+END
 END
