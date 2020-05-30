@@ -48,6 +48,7 @@ public:
   virtual QString getFileName() const;
   virtual void addOutputFileName(QString const &fileName);
   virtual std::vector<QString> getAndClearOutputFileNames();
+  bool isEmpty() const { return m_OutputFileNames.empty(); }
   virtual bool isDirectory() const { return m_IsDirectory; }
   virtual uint64_t getCRC() const;
 
@@ -542,7 +543,16 @@ bool ArchiveImpl::getFileList(FileData* const *&data, size_t &size)
 
 bool ArchiveImpl::extract(const QString &outputDirectory, ProgressCallback* progressCallback,
                           FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback)
+
 {
+  // Retrieve the list of indices we want to extract:
+  std::vector<UInt32> indices;
+  for (std::size_t i = 0; i < m_FileList.size(); ++i) {
+    if (!static_cast<FileDataImpl*>(m_FileList[i])->isEmpty()) {
+      indices.push_back(i);
+    }
+  }
+
   m_ExtractCallback = new CArchiveExtractCallback(progressCallback,
                                                   fileChangeCallback,
                                                   errorCallback,
@@ -551,7 +561,7 @@ bool ArchiveImpl::extract(const QString &outputDirectory, ProgressCallback* prog
                                                   outputDirectory,
                                                   &m_FileList[0],
                                                   &m_Password);
-  HRESULT result = m_ArchivePtr->Extract(nullptr, (UInt32)(Int32)(-1), false, m_ExtractCallback);
+  HRESULT result = m_ArchivePtr->Extract(indices.data(), static_cast<UInt32>(indices.size()), false, m_ExtractCallback);
   //Note: m_ExtractCallBack is deleted by Extract
   switch (result) {
     case S_OK: {
