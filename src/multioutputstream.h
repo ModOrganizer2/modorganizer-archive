@@ -2,12 +2,14 @@
 #define MULTIOUTPUTSTREAM_H
 
 #include "unknown_impl.h"
+#include "callback.h"
 
 #include "7zip/IStream.h"
 
 class QFile;
 class QString;
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -25,7 +27,13 @@ class MultiOutputStream :
   UNKNOWN_1_INTERFACE(ISequentialOutStream);
 
 public:
-  MultiOutputStream();
+
+  // Callback for write. Args are: 1) number of bytes that have been
+  // written for this call, 2) number of bytes that have been written
+  // in total.
+  using WriteCallback = std::function<void(UInt32, UInt64)>;
+
+  MultiOutputStream(WriteCallback callback = {});
 
   virtual ~MultiOutputStream();
 
@@ -60,6 +68,9 @@ public:
   STDMETHOD(Write)(const void *data, UInt32 size, UInt32 *processedSize);
 
 private:
+
+  WriteCallback m_WriteCallback;
+
   /** This is the amount of data written to *any one* file.
    *
    * If there are errors writing to one of the files, this might or might

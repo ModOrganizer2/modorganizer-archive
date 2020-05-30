@@ -193,7 +193,14 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
         m_FullProcessedPaths.push_back(fullProcessedPath);
       }
 
-      m_OutFileStream = new MultiOutputStream;
+      m_OutFileStream = new MultiOutputStream([this](UInt32 size, UInt64 totalSize) {
+        m_ExtractedFileSize += size;
+        if (m_ProgressCallback != nullptr) {
+          float percentage = static_cast<float>(m_ExtractedFileSize) / static_cast<float>(m_TotalFileSize);
+          (*m_ProgressCallback)(percentage);
+        }
+      });
+
       if (!m_OutFileStream->Open(m_FullProcessedPaths)) {
         reportError("can not open output file " + m_FullProcessedPaths[0]);
         return E_ABORT;
@@ -205,12 +212,8 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
       *outStream = temp.Detach();
     }
 
-    m_ExtractedFileSize += m_FileData[index]->getSize();
 
-    if (m_ProgressCallback != nullptr) {
-      float percentage = static_cast<float>(m_ExtractedFileSize) / static_cast<float>(m_TotalFileSize);
-      (*m_ProgressCallback)(percentage);
-    }
+
 
     if (m_FileChangeCallback != nullptr) {
       (*m_FileChangeCallback)(filenames[0]);
