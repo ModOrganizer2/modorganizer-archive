@@ -40,6 +40,7 @@ class QString;
 class FileData {
 public:
   virtual QString getFileName() const = 0;
+  virtual uint64_t getSize() const = 0;
   virtual void addOutputFileName(QString const &fileName) = 0;
   virtual std::vector<QString> getAndClearOutputFileNames() = 0;
   virtual uint64_t getCRC() const = 0;

@@ -55,6 +55,8 @@ public:
                           IInArchive *archiveHandler,
                           const QString &directoryPath,
                           FileData * const *fileData,
+                          std::size_t nbFiles,
+                          UInt64 totalFileSize,
                           QString *password);
 
   virtual ~CArchiveExtractCallback();
@@ -96,6 +98,9 @@ private:
   std::vector<QString> m_FullProcessedPaths;
 
   FileData* const *m_FileData;
+  std::size_t m_NbFiles;
+  UInt64 m_TotalFileSize;
+  UInt64 m_ExtractedFileSize;
   QString *m_Password;
 
   ProgressCallback *m_ProgressCallback;

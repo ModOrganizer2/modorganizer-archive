@@ -78,6 +78,8 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback *progressCallb
     IInArchive *archiveHandler,
     const QString &directoryPath,
     FileData* const *fileData,
+    std::size_t nbFiles,
+    UInt64 totalFileSize,
     QString *password)
   : m_ArchiveHandler(archiveHandler)
   , m_Total(0)
@@ -87,6 +89,9 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback *progressCallb
   //m_ProcessedFileInfo //not sure how to initialise this!
   , m_OutFileStream()
   , m_FileData(fileData)
+  , m_NbFiles(nbFiles)
+  , m_TotalFileSize(totalFileSize)
+  , m_ExtractedFileSize(0)
   , m_Password(password)
   , m_ProgressCallback(progressCallback)
   , m_FileChangeCallback(fileChangeCallback)
@@ -110,11 +115,6 @@ STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)
 
 STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64 *completed)
 {
-  if (m_ProgressCallback != nullptr) {
-    float percentage = static_cast<float>(*completed) / static_cast<float>(m_Total);
-    (*m_ProgressCallback)(percentage);
-  }
-
   return m_Canceled ? E_ABORT : S_OK;
 }
 
@@ -203,6 +203,13 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
       //reference count.
       CComPtr<MultiOutputStream> temp(m_OutFileStream);
       *outStream = temp.Detach();
+    }
+
+    m_ExtractedFileSize += m_FileData[index]->getSize();
+
+    if (m_ProgressCallback != nullptr) {
+      float percentage = static_cast<float>(m_ExtractedFileSize) / static_cast<float>(m_TotalFileSize);
+      (*m_ProgressCallback)(percentage);
     }
 
     if (m_FileChangeCallback != nullptr) {

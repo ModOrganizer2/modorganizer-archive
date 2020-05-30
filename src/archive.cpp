@@ -43,17 +43,19 @@ namespace PropID = NArchive::NHandlerPropID;
 class FileDataImpl : public FileData {
   friend class Archive;
 public:
-  FileDataImpl(const QString &fileName, UInt64 crc, bool isDirectory);
+  FileDataImpl(const QString &fileName, UInt64 size, UInt64 crc, bool isDirectory);
 
-  virtual QString getFileName() const;
-  virtual void addOutputFileName(QString const &fileName);
-  virtual std::vector<QString> getAndClearOutputFileNames();
+  virtual QString getFileName() const override;
+  virtual uint64_t getSize() const override { return m_Size; }
+  virtual void addOutputFileName(QString const &fileName) override;
+  virtual std::vector<QString> getAndClearOutputFileNames() override;
   bool isEmpty() const { return m_OutputFileNames.empty(); }
-  virtual bool isDirectory() const { return m_IsDirectory; }
-  virtual uint64_t getCRC() const;
+  virtual bool isDirectory() const override { return m_IsDirectory; }
+  virtual uint64_t getCRC() const override;
 
 private:
   QString m_FileName;
+  UInt64 m_Size;
   UInt64 m_CRC;
   std::vector<QString> m_OutputFileNames;
   bool m_IsDirectory;
@@ -82,8 +84,9 @@ uint64_t FileDataImpl::getCRC() const {
 }
 
 
-FileDataImpl::FileDataImpl(const QString &fileName, UInt64 crc, bool isDirectory)
+FileDataImpl::FileDataImpl(const QString &fileName, UInt64 size, UInt64 crc, bool isDirectory)
   : m_FileName(fileName)
+  , m_Size(size)
   , m_CRC(crc)
   , m_IsDirectory(isDirectory)
 {
@@ -527,6 +530,7 @@ void ArchiveImpl::resetFileList()
 
   for (UInt32 i = 0; i < numItems; ++i) {
     m_FileList.push_back(new FileDataImpl(readProperty<QString>(i, kpidPath),
+                                          readProperty<UInt64>(i, kpidSize),
                                           readProperty<UInt64>(i, kpidCRC),
                                           readProperty<bool>(i, kpidIsDir)));
   }
@@ -547,9 +551,12 @@ bool ArchiveImpl::extract(const QString &outputDirectory, ProgressCallback* prog
 {
   // Retrieve the list of indices we want to extract:
   std::vector<UInt32> indices;
+  UInt64 totalSize = 0;
   for (std::size_t i = 0; i < m_FileList.size(); ++i) {
-    if (!static_cast<FileDataImpl*>(m_FileList[i])->isEmpty()) {
+    FileDataImpl* fileData = static_cast<FileDataImpl*>(m_FileList[i]);
+    if (!fileData->isEmpty()) {
       indices.push_back(i);
+      totalSize += fileData->getSize();
     }
   }
 
@@ -560,6 +567,8 @@ bool ArchiveImpl::extract(const QString &outputDirectory, ProgressCallback* prog
                                                   m_ArchivePtr,
                                                   outputDirectory,
                                                   &m_FileList[0],
+                                                  m_FileList.size(),
+                                                  totalSize,
                                                   &m_Password);
   HRESULT result = m_ArchivePtr->Extract(indices.data(), static_cast<UInt32>(indices.size()), false, m_ExtractCallback);
   //Note: m_ExtractCallBack is deleted by Extract
