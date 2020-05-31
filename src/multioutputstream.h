@@ -6,9 +6,8 @@
 
 #include "7zip/IStream.h"
 
-class QFile;
-class QString;
-
+#include <io.h>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -41,7 +40,7 @@ public:
    *
    * @returns true if all went OK, false if any file failed to open
    */
-  bool Open(std::vector<QString> const &fileNames);
+  bool Open(std::vector<std::filesystem::path> const &fileNames);
 
   /** Closes all the files opened by the last open
    *
@@ -69,6 +68,45 @@ public:
 
 private:
 
+  struct HandleWrapper {
+
+    HandleWrapper(int handle) : 
+      m_Handle{handle}, m_Open{true} { }
+
+    HandleWrapper(HandleWrapper const&) = delete;
+    HandleWrapper& operator=(HandleWrapper const&) = delete;
+
+    HandleWrapper(HandleWrapper&& other) :
+      m_Handle{ other.m_Handle }, m_Open{ other.m_Open } {
+      // Constructor required because emplace_back requires MoveInsertable. Need
+      // to prevent other from closing our handle:
+      other.m_Open = false;
+    }
+    HandleWrapper& operator=(HandleWrapper&&) = delete;
+    
+    ~HandleWrapper() {
+      close();
+    }
+
+    int handle() const { return m_Handle; }
+
+    int close() {
+      int res = ERROR_SUCCESS;
+      if (m_Open) {
+        res = ::close(m_Handle);
+        if (res == ERROR_SUCCESS) {
+          m_Open = false;
+        }
+      }
+      return res;
+    }
+
+  private:
+    int m_Handle;
+    bool m_Open;
+
+  };
+
   WriteCallback m_WriteCallback;
 
   /** This is the amount of data written to *any one* file.
@@ -78,12 +116,10 @@ private:
    */
   UInt64 m_ProcessedSize;
 
-  typedef std::unique_ptr<QFile> OutFile;
-
   /** All the files opened for this 'stream'
    *
    */
-  std::vector<OutFile> m_Handles;
+  std::vector<HandleWrapper> m_Handles;
 
 };
 

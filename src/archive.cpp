@@ -74,8 +74,8 @@ void FileDataImpl::addOutputFileName(const QString &fileName)
 
 std::vector<QString> FileDataImpl::getAndClearOutputFileNames()
 {
-  std::vector<QString> result = m_OutputFileNames;
-  m_OutputFileNames.clear();
+  std::vector<QString> result;
+  std::swap(m_OutputFileNames, result);
   return result;
 }
 

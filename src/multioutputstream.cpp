@@ -1,8 +1,7 @@
 #include <Unknwn.h>
 #include "multioutputstream.h"
 
-#include <QDir>
-
+#include <fcntl.h>
 #include <io.h>
 
 static inline HRESULT ConvertBoolToHRESULT(bool result)
@@ -23,44 +22,48 @@ static inline HRESULT ConvertBoolToHRESULT(bool result)
 MultiOutputStream::MultiOutputStream(WriteCallback callback) :
   m_WriteCallback(callback) {}
 
-MultiOutputStream::~MultiOutputStream()
-{}
+MultiOutputStream::~MultiOutputStream() { }
 
 HRESULT MultiOutputStream::Close()
 {
-  for (OutFile &f : m_Handles) {
-    f->close();
+  for (auto& handle : m_Handles) {
+    handle.close();
   }
   return S_OK;
 }
 
-bool MultiOutputStream::Open(std::vector<QString> const &fileNames)
+bool MultiOutputStream::Open(std::vector<std::filesystem::path> const & filepaths)
 {
   m_ProcessedSize = 0;
   bool ok = true;
   m_Handles.clear();
-  for (std::size_t f = 0; f != fileNames.size(); ++f) {
-    m_Handles.push_back(OutFile(new QFile(fileNames[f])));
-    if (!m_Handles[f]->open(QIODevice::WriteOnly)) {
+  for (auto &path: filepaths) {
+    int handle = _wopen(path.c_str(), _O_CREAT | _O_BINARY | _O_WRONLY, _S_IREAD | _S_IWRITE);
+    if (handle != -1) {
+      m_Handles.emplace_back(handle);
+    }
+    else {
       ok = false;
     }
   }
   return ok;
 }
 
+#include <QDebug>
+
 STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *processedSize)
 {
   bool update_processed(true);
-  for (OutFile &f : m_Handles) {
-    qint64 realProcessedSize = f->write(static_cast<char const *>(data), size);
+  for (auto &wrapper : m_Handles) {
+    qint64 realProcessedSize = write(wrapper.handle(), static_cast<char const *>(data), size);
     if (realProcessedSize == -1) {
       return ConvertBoolToHRESULT(false);
     }
     if (update_processed) {
       m_ProcessedSize += realProcessedSize;
-      if (m_WriteCallback) {
+      /* if (m_WriteCallback) {
         m_WriteCallback(realProcessedSize, m_ProcessedSize);
-      }
+      } */
       update_processed = false;
     }
     if (processedSize != nullptr) {
@@ -72,9 +75,9 @@ STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *pro
 
 bool MultiOutputStream::SetMTime(FILETIME const *mTime)
 {
-  for (OutFile &f : m_Handles) {
+  for (auto &wrapper : m_Handles) {
     //Get the underlying windows handle from the QFile object.
-    HANDLE h = reinterpret_cast<HANDLE>(::_get_osfhandle(f->handle()));
+    HANDLE h = reinterpret_cast<HANDLE>(::_get_osfhandle(wrapper.handle()));
     if (! ::SetFileTime(h, nullptr, nullptr, mTime)) {
       return false;
     }
