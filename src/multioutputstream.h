@@ -1,16 +1,18 @@
 #ifndef MULTIOUTPUTSTREAM_H
 #define MULTIOUTPUTSTREAM_H
 
-#include "unknown_impl.h"
-#include "callback.h"
+
 
 #include "7zip/IStream.h"
 
-#include <io.h>
 #include <filesystem>
 #include <functional>
 #include <memory>
 #include <vector>
+
+#include "unknown_impl.h"
+#include "callback.h"
+#include "fileio.h"
 
 /** This class allows you to open and output to multiple file handles at a time.
  * It implements the ISequentalOutputStream interface and has some extra functions
@@ -19,11 +21,11 @@
  *
  * Note that the handling on errors could be better.
  */
-class MultiOutputStream :
-    public ISequentialOutStream
+class MultiOutputStream : 
+  public IOutStream
 {
 
-  UNKNOWN_1_INTERFACE(ISequentialOutStream);
+  UNKNOWN_1_INTERFACE(IOutStream);
 
 public:
 
@@ -64,48 +66,13 @@ public:
    * @warn If an error happens, the code will not attempt any further writing,
    * so some files might not get written to at all
    */
-  STDMETHOD(Write)(const void *data, UInt32 size, UInt32 *processedSize);
+  STDMETHOD(Write)(const void *data, UInt32 size, UInt32 *processedSize) override;
+
+  STDMETHOD(Seek)(Int64 offset, UInt32 seekOrigin, UInt64* newPosition) override;
+  STDMETHOD(SetSize)(UInt64 newSize) override;
+  HRESULT GetSize(UInt64* size);
 
 private:
-
-  struct HandleWrapper {
-
-    HandleWrapper(int handle) : 
-      m_Handle{handle}, m_Open{true} { }
-
-    HandleWrapper(HandleWrapper const&) = delete;
-    HandleWrapper& operator=(HandleWrapper const&) = delete;
-
-    HandleWrapper(HandleWrapper&& other) :
-      m_Handle{ other.m_Handle }, m_Open{ other.m_Open } {
-      // Constructor required because emplace_back requires MoveInsertable. Need
-      // to prevent other from closing our handle:
-      other.m_Open = false;
-    }
-    HandleWrapper& operator=(HandleWrapper&&) = delete;
-    
-    ~HandleWrapper() {
-      close();
-    }
-
-    int handle() const { return m_Handle; }
-
-    int close() {
-      int res = ERROR_SUCCESS;
-      if (m_Open) {
-        res = ::close(m_Handle);
-        if (res == ERROR_SUCCESS) {
-          m_Open = false;
-        }
-      }
-      return res;
-    }
-
-  private:
-    int m_Handle;
-    bool m_Open;
-
-  };
 
   WriteCallback m_WriteCallback;
 
@@ -119,7 +86,7 @@ private:
   /** All the files opened for this 'stream'
    *
    */
-  std::vector<HandleWrapper> m_Handles;
+  std::vector<IO::FileOut> m_Files;
 
 };
 

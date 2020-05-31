@@ -179,7 +179,8 @@ private:
     bool MTimeDefined;
   } m_ProcessedFileInfo;
 
-  CComPtr<MultiOutputStream> m_OutFileStream;
+  MultiOutputStream *m_OutputFileStream;
+  CComPtr<MultiOutputStream> m_OutFileStreamCom;
 
   std::vector<std::filesystem::path> m_FullProcessedPaths;
 

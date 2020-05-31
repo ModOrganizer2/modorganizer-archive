@@ -26,37 +26,32 @@ MultiOutputStream::~MultiOutputStream() { }
 
 HRESULT MultiOutputStream::Close()
 {
-  for (auto& handle : m_Handles) {
-    handle.close();
+  for (auto& file: m_Files) {
+    file.Close();
   }
   return S_OK;
 }
 
-bool MultiOutputStream::Open(std::vector<std::filesystem::path> const & filepaths)
+bool MultiOutputStream::Open(std::vector<std::filesystem::path> const& filepaths)
 {
   m_ProcessedSize = 0;
   bool ok = true;
-  m_Handles.clear();
+  m_Files.clear();
   for (auto &path: filepaths) {
-    int handle = _wopen(path.c_str(), _O_CREAT | _O_BINARY | _O_WRONLY, _S_IREAD | _S_IWRITE);
-    if (handle != -1) {
-      m_Handles.emplace_back(handle);
-    }
-    else {
+    m_Files.emplace_back();
+    if (!m_Files.back().Open(path.native())) {
       ok = false;
     }
   }
   return ok;
 }
 
-#include <QDebug>
-
 STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *processedSize)
 {
   bool update_processed(true);
-  for (auto &wrapper : m_Handles) {
-    qint64 realProcessedSize = write(wrapper.handle(), static_cast<char const *>(data), size);
-    if (realProcessedSize == -1) {
+  for (auto &file : m_Files) {
+    UInt32 realProcessedSize;
+    if (!file.Write(data, size, realProcessedSize)) {
       return ConvertBoolToHRESULT(false);
     }
     if (update_processed) {
@@ -73,14 +68,47 @@ STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *pro
   return S_OK;
 }
 
+STDMETHODIMP MultiOutputStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64* newPosition)
+{
+  if (seekOrigin >= 3)
+    return STG_E_INVALIDFUNCTION;
+
+  bool result = true;
+  for (auto& file : m_Files) {
+    UInt64 realNewPosition;
+    bool result = file.Seek(offset, seekOrigin, realNewPosition);
+    if (newPosition)
+      *newPosition = realNewPosition;
+  }
+  return ConvertBoolToHRESULT(result);
+}
+
+STDMETHODIMP MultiOutputStream::SetSize(UInt64 newSize)
+{
+  bool result = true;
+  for (auto& file : m_Files) {
+    UInt64 currentPos;
+    if (!file.Seek(0, FILE_CURRENT, currentPos))
+      return E_FAIL;
+    bool result = file.SetLength(newSize);
+    UInt64 currentPos2;
+    result = result && file.Seek(currentPos, currentPos2);
+  }
+  return result ? S_OK : E_FAIL;
+}
+
+HRESULT MultiOutputStream::GetSize(UInt64* size)
+{
+  if (m_Files.empty()) {
+    return ConvertBoolToHRESULT(false);
+  }
+  return ConvertBoolToHRESULT(m_Files[0].GetLength(*size));
+}
+
 bool MultiOutputStream::SetMTime(FILETIME const *mTime)
 {
-  for (auto &wrapper : m_Handles) {
-    //Get the underlying windows handle from the QFile object.
-    HANDLE h = reinterpret_cast<HANDLE>(::_get_osfhandle(wrapper.handle()));
-    if (! ::SetFileTime(h, nullptr, nullptr, mTime)) {
-      return false;
-    }
+  for (auto &file : m_Files) {
+    file.SetMTime(mTime);
   }
   return true;
 }

@@ -86,12 +86,13 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback *progressCallb
     QString *password)
   : m_ArchiveHandler(archiveHandler)
   , m_Total(0)
-  , m_DirectoryPath(directoryPath.toStdWString())
+  , m_DirectoryPath(QDir::toNativeSeparators(directoryPath).toStdWString())
   , m_Extracting(false)
   , m_Canceled(false)
   , m_Timers{}
   //m_ProcessedFileInfo //not sure how to initialise this!
-  , m_OutFileStream()
+  , m_OutputFileStream{}
+  , m_OutFileStreamCom{}
   , m_FileData(fileData)
   , m_NbFiles(nbFiles)
   , m_TotalFileSize(totalFileSize)
@@ -158,7 +159,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
   namespace fs = std::filesystem;
 
   *outStream = nullptr;
-  m_OutFileStream.Release();
+  m_OutFileStreamCom.Release();
 
   m_FullProcessedPaths.clear();
   m_Extracting = false;
@@ -219,23 +220,32 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
         m_FullProcessedPaths.push_back(fullProcessedPath);
       }
 
-      m_OutFileStream = new MultiOutputStream(); /* [this](UInt32 size, UInt64 totalSize) {
+      m_OutputFileStream = new MultiOutputStream();
+      
+      /* [this](UInt32 size, UInt64 totalSize) {
         m_ExtractedFileSize += size;
         if (m_ProgressCallback != nullptr) {
           float percentage = static_cast<float>(m_ExtractedFileSize) / static_cast<float>(m_TotalFileSize);
           (*m_ProgressCallback)(percentage);
         }
       }); */
+      CComPtr<MultiOutputStream> outStreamCom(m_OutputFileStream);
 
-      if (!m_OutFileStream->Open(m_FullProcessedPaths)) {
-        reportError(L"cannot open output file '{}'", m_FullProcessedPaths[0].native());
+      if (!m_OutputFileStream->Open(m_FullProcessedPaths)) {
+        reportError(L"cannot open output file '{}': {}", m_FullProcessedPaths[0].native(), GetLastError());
         return E_ABORT;
       }
+
+      UInt64 fileSize = getProperty<UInt64>(index, kpidSize);
+      if (m_OutputFileStream->SetSize(fileSize) != S_OK) {
+        qDebug().nospace().noquote() << "SetSize() failed.";
+      }
+
       //This is messy but I can't find another way of doing it. A simple
       //assignment of m_outFileStream to *outStream doesn't increase the
       //reference count.
-      CComPtr<MultiOutputStream> temp(m_OutFileStream);
-      *outStream = temp.Detach();
+      m_OutFileStreamCom = outStreamCom;
+      *outStream = outStreamCom.Detach();
     }
 
     /* if (m_FileChangeCallback != nullptr) {
@@ -266,18 +276,18 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
     reportError(operationResultToString(operationResult));
   }
 
-  if (m_OutFileStream != nullptr) {
+  if (m_OutFileStreamCom) {
     if (m_ProcessedFileInfo.MTimeDefined) {
       auto guard = m_Timers.SetOperationResult.SetMTime.instrument();
-      m_OutFileStream->SetMTime(&m_ProcessedFileInfo.MTime);
+      m_OutputFileStream->SetMTime(&m_ProcessedFileInfo.MTime);
     }
     auto guard = m_Timers.SetOperationResult.Close.instrument();
-    RINOK(m_OutFileStream->Close());
+    RINOK(m_OutputFileStream->Close())
   }
 
   {
     auto guard = m_Timers.SetOperationResult.Release.instrument();
-    m_OutFileStream.Release();
+    m_OutFileStreamCom.Release();
   }
 
   auto guard = m_Timers.SetOperationResult.SetFileAttributesW.instrument();
