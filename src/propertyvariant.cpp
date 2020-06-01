@@ -1,7 +1,5 @@
 #include "propertyvariant.h"
 
-#include <QString>
-
 #include <guiddef.h>
 
 #include <stdint.h>
@@ -99,22 +97,6 @@ template <> PropertyVariant::operator std::wstring() const
       throw std::runtime_error("Property is not a string");
   }
 }
-
-template <> PropertyVariant::operator QString() const
-{
-  switch (vt)
-  {
-    case VT_EMPTY:
-      return "";
-
-    case VT_BSTR:
-      return QString::fromWCharArray(bstrVal, ::SysStringLen(bstrVal));
-
-    default:
-      throw std::runtime_error("Property is not a string");
-  }
-}
-
 
 //This is what he does, though it looks rather a strange use of the property
 template <> PropertyVariant::operator std::string() const
