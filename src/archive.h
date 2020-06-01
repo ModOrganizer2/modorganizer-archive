@@ -77,8 +77,7 @@ public:
 
 
 class Archive {
-
-public:
+public: // Declarations
 
   enum class Error {
     ERROR_NONE,
@@ -93,33 +92,88 @@ public:
     ERROR_OUT_OF_MEMORY
   };
 
-public:
+public: // Special member functions:
 
   virtual ~Archive() {}
 
-  virtual bool isValid() const = 0;
-
-  virtual Error getLastError() const = 0;
-
-  virtual void setLogCallback(LogCallback logCallback) = 0;
-
-  virtual bool open(std::wstring const &archiveName, PasswordCallback passwordCallback) = 0;
-
-  virtual void close() = 0;
-
-  virtual const std::vector<FileData*>& getFileList() const = 0;
-
-  virtual bool extract(std::wstring const &outputDirectory, ProgressCallback progressCallback,
-                       FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) = 0;
-
-  virtual void cancel() = 0;
-
-  void operator delete(void *ptr) {
+  void operator delete(void* ptr) {
     if (ptr != nullptr) {
-      Archive *object = static_cast<Archive*>(ptr);
+      Archive* object = static_cast<Archive*>(ptr);
       object->destroy();
     }
   }
+
+public:
+
+  /**
+   * @brief Check if this Archive wrapper is in a valid state.
+   *
+   * A non-valid Archive instance usually means that the 7z DLLs could not be loaded properly. Failures
+   * to open or extract archives do not invalidate the Archive, so this should only be used to check
+   * if the Archive object has been initialized properly.
+   *
+   * @return true if this instance is valid, false otherwise. 
+   */
+  virtual bool isValid() const = 0;
+
+  /**
+   * @return retrieve the error-code of the last error that occurred.
+   */
+  virtual Error getLastError() const = 0;
+
+  /**
+   * @brief Set the callback used to log messages.
+   *
+   * To remove the callback, you can pass a default-constructed LogCallback object.
+   *
+   * @param logCallback The new callback to use for logging message.
+   */
+  virtual void setLogCallback(LogCallback logCallback) = 0;
+
+  /**
+   * @brief Open the given archive.
+   *
+   * @param archivePath Path to the archive to open.
+   * @param passwordCallback Callback to use to ask user for password. This callback must remain
+   *   valid until extraction is complete since some types of archives only requires password when
+   *   extracting.
+   *
+   * @return true if the archive was open properly, false otherwise.
+   */
+  virtual bool open(std::wstring const &archivePath, PasswordCallback passwordCallback) = 0;
+
+  /**
+   * @brief Close the currently opened archive.
+   */
+  virtual void close() = 0;
+
+  /**
+   * @return the list of files in the currently opened archive.
+   */
+  virtual const std::vector<FileData*>& getFileList() const = 0;
+
+  /**
+   * @brief Extract the content of the archive.
+   *
+   * This function uses the filenames from FileData to obtain the extraction paths of file.
+   *
+   * @param outputDirectory Path to the directory where the archive should be extracted. If not empty,
+   *   conflicting files will be replaced by the extracted ones.
+   * @param progressCallback Function called to notify extraction progress. This function is called
+   *   when new data is written to the disk, not when the archive is read, so it may take a little
+   *   time to start.
+   * @param fileChangeCallback Function called when the file currently being extracted changes.
+   * @param errorCallback Function called when an error occurs.
+   *
+   * @return true if the archive was extracted, false otherwise.
+   */
+  virtual bool extract(std::wstring const &outputDirectory, ProgressCallback progressCallback,
+                       FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) = 0;
+
+  /**
+   * @brief Cancel the current extraction process.
+   */
+  virtual void cancel() = 0;
 
 private:
 
