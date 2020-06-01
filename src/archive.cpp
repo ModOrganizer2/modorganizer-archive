@@ -344,7 +344,14 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
     return false;
   }
 
-  CComPtr<CArchiveOpenCallback> openCallbackPtr(new CArchiveOpenCallback(passwordCallback, filepath));
+  CComPtr<CArchiveOpenCallback> openCallbackPtr;
+  try {
+    openCallbackPtr = new CArchiveOpenCallback(passwordCallback, filepath);
+  }
+  catch (std::runtime_error const& ex) {
+    m_LastError = ERROR_FAILED_TO_OPEN_ARCHIVE;
+    return false;
+  }
 
   // Try to open the archive
 
