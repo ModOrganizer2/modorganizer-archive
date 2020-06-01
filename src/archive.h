@@ -128,7 +128,7 @@ public:
    *
    * @param logCallback The new callback to use for logging message.
    */
-  virtual void setLogCallback(LogCallback logCallback) = 0;
+  virtual void setLogCallback(ArchiveCallbacks::LogCallback logCallback) = 0;
 
   /**
    * @brief Open the given archive.
@@ -140,7 +140,7 @@ public:
    *
    * @return true if the archive was open properly, false otherwise.
    */
-  virtual bool open(std::wstring const &archivePath, PasswordCallback passwordCallback) = 0;
+  virtual bool open(std::wstring const &archivePath, ArchiveCallbacks::PasswordCallback passwordCallback) = 0;
 
   /**
    * @brief Close the currently opened archive.
@@ -167,8 +167,8 @@ public:
    *
    * @return true if the archive was extracted, false otherwise.
    */
-  virtual bool extract(std::wstring const &outputDirectory, ProgressCallback progressCallback,
-                       FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) = 0;
+  virtual bool extract(std::wstring const &outputDirectory, ArchiveCallbacks::ProgressCallback progressCallback,
+    ArchiveCallbacks::FileChangeCallback fileChangeCallback, ArchiveCallbacks::ErrorCallback errorCallback) = 0;
 
   /**
    * @brief Cancel the current extraction process.

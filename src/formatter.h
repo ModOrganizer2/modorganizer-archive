@@ -55,7 +55,7 @@ namespace fmt {
 
 }
 
-namespace NArchive {
+namespace ArchiveStrings {
 
   /**
    * @brief Join the element of the given container using the given separator.

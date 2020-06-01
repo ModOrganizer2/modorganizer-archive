@@ -36,6 +36,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <fmt/format.h>
 
+using namespace ArchiveCallbacks;
 
 #define UNUSED(x)
 
@@ -116,7 +117,7 @@ STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT *value
     case kpidATime:  prop = m_FileInfo.lastAccessTime(); break;
     case kpidMTime:  prop = m_FileInfo.lastWriteTime(); break;
 
-    default: m_LogCallback(NArchive::LogLevel::Warning, fmt::format(L"Unexpected property {}.", propID));
+    default: m_LogCallback(LogLevel::Warning, fmt::format(L"Unexpected property {}.", propID));
   }
   return S_OK;
 }

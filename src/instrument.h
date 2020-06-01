@@ -5,7 +5,7 @@
 
 #include <fmt/format.h>
 
-namespace NArchive {
+namespace ArchiveTimers {
 
   /**
    * Small class that can be used to instrument portion of code using a guard.

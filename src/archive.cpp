@@ -37,7 +37,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 namespace PropID = NArchive::NHandlerPropID;
 
-using LogLevel = NArchive::LogLevel;
+using namespace ArchiveCallbacks;
 
 class FileDataImpl : public FileData {
   friend class Archive;
@@ -165,7 +165,7 @@ private:
   std::size_t m_MaxSignatureLen = 0;
 };
 
-LogCallback ArchiveImpl::DefaultLogCallback([](NArchive::LogLevel, std::wstring const&) {});
+LogCallback ArchiveImpl::DefaultLogCallback([](LogLevel, std::wstring const&) {});
 
 template <typename T> T ArchiveImpl::readHandlerProperty(UInt32 index, PROPID propID) const
 {
@@ -317,8 +317,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
   Formats formatList = m_Formats;
 
   // Convert to long path if it's not already:
-  std::filesystem::path filepath = archiveName.starts_with(L"\\\\?\\") ? archiveName : L"\\\\?\\" + archiveName;
-  filepath.make_preferred();
+  std::filesystem::path filepath = IO::make_path(archiveName);
 
   // If it doesn't exist or is a directory, error
   if (!exists(filepath) || is_directory(filepath)) {
@@ -377,7 +376,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
             archiveName, signatureInfo.second.m_Name));
 
           // Retrieve the extension (warning: .extension() contains the dot):
-          std::wstring ext = NArchive::towlower(filepath.extension().native().substr(1));
+          std::wstring ext = ArchiveStrings::towlower(filepath.extension().native().substr(1));
           std::wistringstream s(signatureInfo.second.m_Extensions);
           std::wstring t;
           bool found = false;
@@ -406,7 +405,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
   {
     // determine archive type based on extension
     Formats const *formats = nullptr;
-    std::wstring ext = NArchive::towlower(filepath.extension().native().substr(1));
+    std::wstring ext = ArchiveStrings::towlower(filepath.extension().native().substr(1));
     FormatMap::const_iterator map_iter = m_FormatMap.find(ext);
     if (map_iter != m_FormatMap.end()) {
       formats = &map_iter->second;
@@ -440,7 +439,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
           for (ArchiveFormatInfo format : *formats) {
             vformats.push_back(format.m_Name);
           }
-          m_LogCallback(LogLevel::Warning, fmt::format(L"The format(s) expected for this extension are: {}.", NArchive::join(vformats, L", ")));
+          m_LogCallback(LogLevel::Warning, fmt::format(L"The format(s) expected for this extension are: {}.", ArchiveStrings::join(vformats, L", ")));
         }
       }
     }

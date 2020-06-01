@@ -46,7 +46,7 @@ class CArchiveOpenCallback: public IArchiveOpenCallback,
 
 public:
 
-  CArchiveOpenCallback(PasswordCallback passwordCallback, LogCallback logCallback, std::filesystem::path const &filepath);
+  CArchiveOpenCallback(ArchiveCallbacks::PasswordCallback passwordCallback, ArchiveCallbacks::LogCallback logCallback, std::filesystem::path const &filepath);
 
   ~CArchiveOpenCallback() { }
 
@@ -64,8 +64,8 @@ public:
 
 private:
 
-  PasswordCallback m_PasswordCallback;
-  LogCallback m_LogCallback;
+  ArchiveCallbacks::PasswordCallback m_PasswordCallback;
+  ArchiveCallbacks::LogCallback m_LogCallback;
   std::wstring m_Password;
 
   std::filesystem::path m_Path;

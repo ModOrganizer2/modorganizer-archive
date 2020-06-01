@@ -20,7 +20,7 @@ namespace IO {
   public:
 
     FileInfo() : m_Valid{ false } {};
-    FileInfo(std::filesystem::path const& path, BY_HANDLE_FILE_INFORMATION fileInfo) : 
+    FileInfo(std::filesystem::path const& path, BY_HANDLE_FILE_INFORMATION fileInfo) :
       m_Valid{ true }, m_Path(path), m_FileInfo{ fileInfo } { }
 
     bool isValid() const { return m_Valid; }
@@ -120,7 +120,7 @@ namespace IO {
     bool ReadPart(void* data, UInt32 size, UInt32& processedSize) noexcept;
   };
 
-  class FileOut: public FileBase {
+  class FileOut : public FileBase {
   public:
     using FileBase::FileBase;
 
@@ -141,6 +141,19 @@ namespace IO {
 
     bool WritePart(const void* data, UInt32 size, UInt32& processedSize) noexcept;
   };
+
+  /**
+   * @brief Convert the given wide-string to a path object, after adding (if not already present)
+   *   the Windows long-path prefix.
+   *
+   * @param path The string containing the absolute path.
+   *
+   * @return the created path.
+   */
+  inline std::filesystem::path make_path(std::wstring const& path) {
+    std::filesystem::path p = path.starts_with(L"\\\\?\\") ? path : L"\\\\?\\" + path;
+    return p.make_preferred();
+  }
 
 }
 

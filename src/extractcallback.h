@@ -53,17 +53,17 @@ class CArchiveExtractCallback: public IArchiveExtractCallback,
 
 public:
 
-  CArchiveExtractCallback(ProgressCallback progressCallback,
-                          FileChangeCallback fileChangeCallback,
-                          ErrorCallback errorCallback,
-                          PasswordCallback passwordCallback,
-                          LogCallback logCallback,
-                          IInArchive *archiveHandler,
-                          std::wstring const& directoryPath,
-                          FileData * const *fileData,
-                          std::size_t nbFiles,
-                          UInt64 totalFileSize,
-                          std::wstring *password);
+  CArchiveExtractCallback(ArchiveCallbacks::ProgressCallback progressCallback,
+    ArchiveCallbacks::FileChangeCallback fileChangeCallback,
+    ArchiveCallbacks::ErrorCallback errorCallback,
+    ArchiveCallbacks::PasswordCallback passwordCallback,
+    ArchiveCallbacks::LogCallback logCallback,
+    IInArchive *archiveHandler,
+    std::wstring const& directoryPath,
+    FileData * const *fileData,
+    std::size_t nbFiles,
+    UInt64 totalFileSize,
+    std::wstring *password);
 
   virtual ~CArchiveExtractCallback();
 
@@ -99,12 +99,12 @@ private:
 
 
   struct {
-    NArchive::Timer GetStream;
+    ArchiveTimers::Timer GetStream;
     struct {
-      NArchive::Timer SetMTime;
-      NArchive::Timer Close;
-      NArchive::Timer Release;
-      NArchive::Timer SetFileAttributesW;
+      ArchiveTimers::Timer SetMTime;
+      ArchiveTimers::Timer Close;
+      ArchiveTimers::Timer Release;
+      ArchiveTimers::Timer SetFileAttributesW;
     } SetOperationResult;
   } m_Timers;
 
@@ -127,11 +127,11 @@ private:
   UInt64 m_LastCallbackFileSize;
   UInt64 m_ExtractedFileSize;
 
-  ProgressCallback m_ProgressCallback;
-  FileChangeCallback m_FileChangeCallback;
-  ErrorCallback m_ErrorCallback;
-  PasswordCallback m_PasswordCallback;
-  LogCallback m_LogCallback;
+  ArchiveCallbacks::ProgressCallback m_ProgressCallback;
+  ArchiveCallbacks::FileChangeCallback m_FileChangeCallback;
+  ArchiveCallbacks::ErrorCallback m_ErrorCallback;
+  ArchiveCallbacks::PasswordCallback m_PasswordCallback;
+  ArchiveCallbacks::LogCallback m_LogCallback;
   std::wstring* m_Password;
 
 };
