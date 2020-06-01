@@ -171,6 +171,30 @@ template <> PropertyVariant& PropertyVariant::operator=(std::wstring const &str)
   return *this;
 }
 
+template <> PropertyVariant& PropertyVariant::operator=(bool const& n)
+{
+  clear();
+  vt = VT_BOOL;
+  boolVal = n ? VARIANT_TRUE : VARIANT_FALSE;
+  return *this;
+}
+
+template <> PropertyVariant& PropertyVariant::operator=(FILETIME const& n)
+{
+  clear();
+  vt = VT_FILETIME;
+  filetime = n;
+  return *this;
+}
+
+template <> PropertyVariant& PropertyVariant::operator=(uint32_t const& n)
+{
+  clear();
+  vt = VT_UI4;
+  ulVal = n;
+  return *this;
+}
+
 template <> PropertyVariant& PropertyVariant::operator=(uint64_t const &n)
 {
   clear();

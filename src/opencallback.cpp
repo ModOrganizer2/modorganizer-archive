@@ -107,16 +107,12 @@ STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT *value
       }
     } break;
 
-    // Note: For whatever reason, the assignment operators of the variant for bool, FILETIME
-    // or even UInt32 are not found at link time. This should have 0 impact since the last
-    // version provide these anyway, but I'm curious why.
-
-    // case kpidIsDir:  prop = m_FileInfo.isDir(); break;
+    case kpidIsDir:  prop = m_FileInfo.isDir(); break;
     case kpidSize:   prop = m_FileInfo.fileSize(); break;
-    // case kpidAttrib: prop = m_FileInfo.fileAttributes(); break;
-    // case kpidCTime:  prop = m_FileInfo.creationTime(); break;
-    // case kpidATime:  prop = m_FileInfo.lastAccessTime(); break;
-    // case kpidMTime:  prop = m_FileInfo.lastWriteTime(); break;
+    case kpidAttrib: prop = m_FileInfo.fileAttributes(); break;
+    case kpidCTime:  prop = m_FileInfo.creationTime(); break;
+    case kpidATime:  prop = m_FileInfo.lastAccessTime(); break;
+    case kpidMTime:  prop = m_FileInfo.lastWriteTime(); break;
 
     default: qDebug() << "Unexpected property " << propID;
   }
