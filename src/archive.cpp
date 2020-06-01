@@ -360,7 +360,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
 
   CComPtr<CArchiveOpenCallback> openCallbackPtr;
   try {
-    openCallbackPtr = new CArchiveOpenCallback(passwordCallback, filepath);
+    openCallbackPtr = new CArchiveOpenCallback(passwordCallback, m_LogCallback, filepath);
   }
   catch (std::runtime_error const& ex) {
     m_LastError = Error::ERROR_FAILED_TO_OPEN_ARCHIVE;

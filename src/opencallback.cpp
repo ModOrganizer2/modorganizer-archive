@@ -25,8 +25,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "inputstream.h"
 #include "propertyvariant.h"
 
-#include <QDebug>
-
 #include <atlbase.h>
 
 #include <memory>
@@ -36,11 +34,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "fileio.h"
 
+#include <fmt/format.h>
+
 
 #define UNUSED(x)
 
-CArchiveOpenCallback::CArchiveOpenCallback(PasswordCallback passwordCallback, std::filesystem::path const& filepath)
+CArchiveOpenCallback::CArchiveOpenCallback(
+  PasswordCallback passwordCallback, LogCallback logCallback, std::filesystem::path const& filepath)
   : m_PasswordCallback(passwordCallback)
+  , m_LogCallback(logCallback)
   , m_Path(filepath)
   , m_SubArchiveMode(false)
 {
@@ -114,7 +116,7 @@ STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT *value
     case kpidATime:  prop = m_FileInfo.lastAccessTime(); break;
     case kpidMTime:  prop = m_FileInfo.lastWriteTime(); break;
 
-    default: qDebug() << "Unexpected property " << propID;
+    default: m_LogCallback(NArchive::LogLevel::Warning, fmt::format(L"Unexpected property {}.", propID));
   }
   return S_OK;
 }
