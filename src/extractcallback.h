@@ -77,6 +77,7 @@ public:
                           FileChangeCallback fileChangeCallback,
                           ErrorCallback errorCallback,
                           PasswordCallback passwordCallback,
+                          LogCallback logCallback,
                           IInArchive *archiveHandler,
                           std::wstring const& directoryPath,
                           FileData * const *fileData,
@@ -193,6 +194,7 @@ private:
   FileChangeCallback m_FileChangeCallback;
   ErrorCallback m_ErrorCallback;
   PasswordCallback m_PasswordCallback;
+  LogCallback m_LogCallback;
   std::wstring* m_Password;
 
 };

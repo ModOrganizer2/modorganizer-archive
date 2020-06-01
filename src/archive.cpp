@@ -95,6 +95,10 @@ FileDataImpl::FileDataImpl(const QString &fileName, UInt64 size, UInt64 crc, boo
 /// represents the connection to one archive and provides common functionality
 class ArchiveImpl : public Archive {
 
+  // Callback that does nothing but avoid having to check if the callback is present
+  // everytime.
+  static LogCallback DefaultLogCallback;
+
 public:
 
   ArchiveImpl();
@@ -103,6 +107,10 @@ public:
   virtual bool isValid() const { return m_Valid; }
 
   virtual Error getLastError() const { return m_LastError; }
+  virtual void setLogCallback(LogCallback logCallback) override { 
+    // Wrap the callback so that we do not have to check if it is set everywhere:
+    m_LogCallback = logCallback ? logCallback : DefaultLogCallback;
+  }
 
   virtual bool open(std::wstring const &archiveName, PasswordCallback passwordCallback);
   virtual void close();
@@ -149,6 +157,7 @@ private:
   CComPtr<IInArchive> m_ArchivePtr;
   CArchiveExtractCallback *m_ExtractCallback;
 
+  LogCallback m_LogCallback;
   PasswordCallback m_PasswordCallback;
 
   std::vector<FileData*> m_FileList;
@@ -177,6 +186,8 @@ private:
 
   std::size_t m_MaxSignatureLen = 0;
 };
+
+LogCallback ArchiveImpl::DefaultLogCallback([](NArchive::LogLevel, std::wstring const&) {});
 
 template <typename T> T ArchiveImpl::readHandlerProperty(UInt32 index, PROPID propID) const
 {
@@ -277,30 +288,33 @@ HRESULT ArchiveImpl::loadFormats()
 
 ArchiveImpl::ArchiveImpl()
   : m_Valid(false)
-  , m_LastError(ERROR_NONE)
+  , m_LastError(Error::ERROR_NONE)
   , m_Library("dlls/7z")
   , m_PasswordCallback{}
 {
+  // Reset the log callback:
+  setLogCallback({});
+
   if (!m_Library) {
-    m_LastError = ERROR_LIBRARY_NOT_FOUND;
+    m_LastError = Error::ERROR_LIBRARY_NOT_FOUND;
     return;
   }
 
   m_CreateObjectFunc = m_Library.resolve< CreateObjectFunc>("CreateObject");
   if (m_CreateObjectFunc == nullptr) {
-    m_LastError = ERROR_LIBRARY_INVALID;
+    m_LastError = Error::ERROR_LIBRARY_INVALID;
     return;
   }
 
   m_GetHandlerPropertyFunc = m_Library.resolve< GetPropertyFunc>("GetHandlerProperty2");
   if (m_GetHandlerPropertyFunc == nullptr) {
-    m_LastError = ERROR_LIBRARY_INVALID;
+    m_LastError = Error::ERROR_LIBRARY_INVALID;
     return;
   }
 
   try {
     if (loadFormats() != S_OK) {
-      m_LastError = ERROR_LIBRARY_INVALID;
+      m_LastError = Error::ERROR_LIBRARY_INVALID;
       return;
     }
 
@@ -309,7 +323,7 @@ ArchiveImpl::ArchiveImpl()
   }
   catch (std::exception const &e) {
     qDebug() << "Caught exception " << e.what();
-    m_LastError = ERROR_LIBRARY_INVALID;
+    m_LastError = Error::ERROR_LIBRARY_INVALID;
   }
 }
 
@@ -329,7 +343,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
 
   // If it doesn't exist or is a directory, error
   if (!exists(filepath) || is_directory(filepath)) {
-    m_LastError = ERROR_ARCHIVE_NOT_FOUND;
+    m_LastError = Error::ERROR_ARCHIVE_NOT_FOUND;
     return false;
   }
 
@@ -340,7 +354,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
   CComPtr<InputStream> file(new InputStream);
 
   if (!file->Open(filepath)) {
-    m_LastError = ERROR_FAILED_TO_OPEN_ARCHIVE;
+    m_LastError = Error::ERROR_FAILED_TO_OPEN_ARCHIVE;
     return false;
   }
 
@@ -349,7 +363,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
     openCallbackPtr = new CArchiveOpenCallback(passwordCallback, filepath);
   }
   catch (std::runtime_error const& ex) {
-    m_LastError = ERROR_FAILED_TO_OPEN_ARCHIVE;
+    m_LastError = Error::ERROR_FAILED_TO_OPEN_ARCHIVE;
     return false;
   }
 
@@ -370,7 +384,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
       std::string signature = std::string(buff.data(), act);
       if (signatureInfo.first == std::string(buff.data(), signatureInfo.first.size())) {
         if (m_CreateObjectFunc(&signatureInfo.second.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
-          m_LastError = ERROR_LIBRARY_ERROR;
+          m_LastError = Error::ERROR_LIBRARY_ERROR;
           return false;
         }
 
@@ -423,7 +437,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
           //there are multiple formats, we'll try by signature lookup first.
           for (ArchiveFormatInfo format : *formats) {
             if (m_CreateObjectFunc(&format.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
-              m_LastError = ERROR_LIBRARY_ERROR;
+              m_LastError = Error::ERROR_LIBRARY_ERROR;
               return false;
             }
 
@@ -457,7 +471,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
     qDebug() << "Attempting to open the file with the remaining formats as a fallback...";
     for (auto format : formatList) {
       if (m_CreateObjectFunc(&format.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
-        m_LastError = ERROR_LIBRARY_ERROR;
+        m_LastError = Error::ERROR_LIBRARY_ERROR;
         return false;
       }
       if (m_ArchivePtr->Open(file, 0, openCallbackPtr) == S_OK) {
@@ -471,7 +485,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
   }
 
   if (m_ArchivePtr == nullptr) {
-    m_LastError = ERROR_INVALID_ARCHIVE_FORMAT;
+    m_LastError = Error::ERROR_INVALID_ARCHIVE_FORMAT;
     return false;
   }
 
@@ -499,7 +513,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
     }
   }*/
 
-  m_LastError = ERROR_NONE;
+  m_LastError = Error::ERROR_NONE;
 
   resetFileList();
   return true;
@@ -568,6 +582,7 @@ bool ArchiveImpl::extract(std::wstring const& outputDirectory, ProgressCallback 
                                                   fileChangeCallback,
                                                   errorCallback,
                                                   m_PasswordCallback,
+                                                  m_LogCallback,
                                                   m_ArchivePtr,
                                                   outputDirectory,
                                                   &m_FileList[0],
@@ -581,13 +596,13 @@ bool ArchiveImpl::extract(std::wstring const& outputDirectory, ProgressCallback 
       //nop
     } break;
     case E_ABORT: {
-      m_LastError = ERROR_EXTRACT_CANCELLED;
+      m_LastError = Error::ERROR_EXTRACT_CANCELLED;
     } break;
     case E_OUTOFMEMORY: {
-      m_LastError = ERROR_OUT_OF_MEMORY;
+      m_LastError = Error::ERROR_OUT_OF_MEMORY;
     } break;
     default: {
-      m_LastError = ERROR_LIBRARY_ERROR;
+      m_LastError = Error::ERROR_LIBRARY_ERROR;
     } break;
   }
 

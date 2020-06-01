@@ -77,6 +77,7 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallba
     FileChangeCallback fileChangeCallback,
     ErrorCallback errorCallback,
     PasswordCallback passwordCallback,
+    LogCallback logCallback,
     IInArchive *archiveHandler,
     std::wstring const& directoryPath,
     FileData* const *fileData,
@@ -101,6 +102,7 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallba
   , m_FileChangeCallback(fileChangeCallback)
   , m_ErrorCallback(errorCallback)
   , m_PasswordCallback(passwordCallback)
+  , m_LogCallback(logCallback)
   , m_Password(password)
 {
 }

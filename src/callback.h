@@ -24,8 +24,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <functional>
 #include <string>
 
+namespace NArchive {
+
+  enum class LogLevel {
+    Debug,
+    Info,
+    Warn,
+    Error
+  };
+
+}
+
 static const int MAX_PASSWORD_LENGTH = 256;
 
+using LogCallback = std::function<void(NArchive::LogLevel, std::wstring const& log)>;
 using ProgressCallback = std::function<void(float)>;
 using PasswordCallback = std::function<std::wstring()>;
 using FileChangeCallback = std::function<void(std::wstring const&)>;

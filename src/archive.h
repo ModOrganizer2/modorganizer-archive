@@ -52,7 +52,7 @@ class Archive {
 
 public:
 
-  enum Error {
+  enum class Error {
     ERROR_NONE,
     ERROR_EXTRACT_CANCELLED,
     ERROR_LIBRARY_NOT_FOUND,
@@ -72,6 +72,8 @@ public:
   virtual bool isValid() const = 0;
 
   virtual Error getLastError() const = 0;
+
+  virtual void setLogCallback(LogCallback logCallback) = 0;
 
   virtual bool open(std::wstring const &archiveName, PasswordCallback passwordCallback) = 0;
 
