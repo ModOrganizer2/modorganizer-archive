@@ -27,8 +27,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "propertyvariant.h"
 #include "library.h"
 
-#include <QDebug>
-
 #include <algorithm>
 #include <map>
 #include <stddef.h>
@@ -38,6 +36,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <vector>
 
 namespace PropID = NArchive::NHandlerPropID;
+
+using LogLevel = NArchive::LogLevel;
 
 class FileDataImpl : public FileData {
   friend class Archive;
@@ -322,7 +322,7 @@ ArchiveImpl::ArchiveImpl()
     return;
   }
   catch (std::exception const &e) {
-    qDebug() << "Caught exception " << e.what();
+    m_LogCallback(LogLevel::Error, fmt::format(L"Caught exception {}.", e));
     m_LastError = Error::ERROR_LIBRARY_INVALID;
   }
 }
@@ -389,13 +389,13 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
         }
 
         if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
-          qDebug() << "Failed to open " << archiveName << " using " <<
-            QString::fromStdWString(signatureInfo.second.m_Name) << " (from signature)";
+          m_LogCallback(LogLevel::Debug, fmt::format(L"Failed to open {} using {} (from signature).",
+            archiveName, signatureInfo.second.m_Name));
           m_ArchivePtr.Release();
         }
         else {
-          qDebug() << "Opened " << archiveName << " using " <<
-            QString::fromStdWString(signatureInfo.second.m_Name) << " (from signature)";
+          m_LogCallback(LogLevel::Debug, fmt::format(L"Opened {} using {} (from signature).",
+            archiveName, signatureInfo.second.m_Name));
           QString extension = QString::fromStdWString(filepath.extension());
           std::wstring ext(extension.toStdWString());
           std::wistringstream s(signatureInfo.second.m_Extensions);
@@ -408,7 +408,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
             }
           }
           if (!found) {
-            qWarning() << "WARNING: The extension of this file did not match the expected extensions for this format! You may want to inform the mod author.";
+            m_LogCallback(LogLevel::Warning, L"The extension of this file did not match the expected extensions for this format.");
             sigMismatch = true;
           }
         }
@@ -442,13 +442,13 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
             }
 
             if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
-              qDebug() << "Failed to open " << archiveName << " using " <<
-                QString::fromStdWString(format.m_Name) << " (from extension)";
+              m_LogCallback(LogLevel::Debug, fmt::format(L"Failed to open {} using {} (from signature).",
+                archiveName, format.m_Name));
               m_ArchivePtr.Release();
             }
             else {
-              qDebug() << "Opened " << archiveName << " using " <<
-                QString::fromStdWString(format.m_Name) << " (from extension)";
+              m_LogCallback(LogLevel::Debug, fmt::format(L"Opened {} using {} (from signature).",
+                archiveName, format.m_Name));
               break;
             }
 
@@ -457,27 +457,28 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
               formatList.erase(iter);
           }
         } else if (sigMismatch) {
-          QStringList formatList;
-          for (ArchiveFormatInfo format : *formats)
-            formatList.append(QString::fromStdWString(format.m_Name));
-          qWarning() << "WARNING: The format(s) expected for this extension are: " << formatList.join(", ");
+          std::vector<std::wstring> vformats;
+          for (ArchiveFormatInfo format : *formats) {
+            vformats.push_back(format.m_Name);
+          }
+          m_LogCallback(LogLevel::Warning, fmt::format(L"The format(s) expected for this extension are: {}.", NArchive::join(vformats, L", ")));
         }
       }
     }
   }
 
   if (m_ArchivePtr == nullptr) {
-    qWarning() << "WARNING: We're trying to open an archive but could not recognize the extension or signature.";
-    qDebug() << "Attempting to open the file with the remaining formats as a fallback...";
+    m_LogCallback(LogLevel::Warning, L"Trying to open an archive but could not recognize the extension or signature.");
+    m_LogCallback(LogLevel::Debug, L"Attempting to open the file with the remaining formats as a fallback...");
     for (auto format : formatList) {
       if (m_CreateObjectFunc(&format.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
         m_LastError = Error::ERROR_LIBRARY_ERROR;
         return false;
       }
       if (m_ArchivePtr->Open(file, 0, openCallbackPtr) == S_OK) {
-        qDebug() << "Opened " << archiveName << " using " <<
-          QString::fromStdWString(format.m_Name) << " (scan fallback)";
-        qWarning() << "NOTE: This archive likely has an incorrect extension. Please contact the mod author.";
+        m_LogCallback(LogLevel::Debug, fmt::format(L"Opened {} using {} (from signature).",
+          archiveName, format.m_Name));
+        m_LogCallback(LogLevel::Warning, L"This archive likely has an incorrect extension.");
         break;
       } else
         m_ArchivePtr.Release();
