@@ -19,21 +19,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include <Unknwn.h>
-#include "extractcallback.h"
 
+#include <fmt/format.h>
+
+#include "extractcallback.h"
 #include "archive.h"
 #include "propertyvariant.h"
-
-#include <shlobj_core.h>
-
-#include <QDebug>
-#include <QDir>
 
 #include <filesystem>
 #include <string>
 #include <stdexcept>
 
-QString operationResultToString(Int32 operationResult)
+#include <QDebug>
+
+std::wstring operationResultToString(Int32 operationResult)
 {
   namespace R = NArchive::NExtract::NOperationResult;
 
@@ -43,54 +42,54 @@ QString operationResultToString(Int32 operationResult)
       return {};
 
     case R::kUnsupportedMethod:
-      return "Encoding method unsupported";
+      return L"Encoding method unsupported";
 
     case R::kDataError:
-      return "Data error";
+      return L"Data error";
 
     case R::kCRCError:
-      return "CRC error";
+      return L"CRC error";
 
     case R::kUnavailable:
-      return "Unavailable";
+      return L"Unavailable";
 
     case R::kUnexpectedEnd:
-      return "Unexpected end of archive";
+      return L"Unexpected end of archive";
 
     case R::kDataAfterEnd:
-      return "Data after end of archive";
+      return L"Data after end of archive";
 
     case R::kIsNotArc:
-      return "Not an ARC";
+      return L"Not an ARC";
 
     case R::kHeadersError:
-      return "Bad headers";
+      return L"Bad headers";
 
     case R::kWrongPassword:
-      return "Wrong password";
+      return L"Wrong password";
 
     default:
-      return QString("Unknown error %1").arg(operationResult);
+      return fmt::format(L"Unknown error {}", operationResult);
   }
 }
 
-CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback *progressCallback,
-    FileChangeCallback *fileChangeCallback,
-    ErrorCallback *errorCallback,
-    PasswordCallback *passwordCallback,
+CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallback,
+    FileChangeCallback fileChangeCallback,
+    ErrorCallback errorCallback,
+    PasswordCallback passwordCallback,
     IInArchive *archiveHandler,
-    const QString &directoryPath,
+    std::wstring const& directoryPath,
     FileData* const *fileData,
     std::size_t nbFiles,
     UInt64 totalFileSize,
-    QString *password)
+    std::wstring *password)
   : m_ArchiveHandler(archiveHandler)
   , m_Total(0)
-  , m_DirectoryPath(QDir::toNativeSeparators(directoryPath).toStdWString())
+  , m_DirectoryPath(directoryPath)
   , m_Extracting(false)
   , m_Canceled(false)
   , m_Timers{}
-  //m_ProcessedFileInfo //not sure how to initialise this!
+  , m_ProcessedFileInfo{}
   , m_OutputFileStream{}
   , m_OutFileStreamCom{}
   , m_FileData(fileData)
@@ -98,11 +97,11 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback *progressCallb
   , m_TotalFileSize(totalFileSize)
   , m_ExtractedFileSize(0)
   , m_LastCallbackFileSize(0)
-  , m_Password(password)
   , m_ProgressCallback(progressCallback)
   , m_FileChangeCallback(fileChangeCallback)
   , m_ErrorCallback(errorCallback)
   , m_PasswordCallback(passwordCallback)
+  , m_Password(password)
 {
 }
 
@@ -113,10 +112,6 @@ CArchiveExtractCallback::~CArchiveExtractCallback()
   qDebug().nospace().noquote() << QString::fromStdString(m_Timers.SetOperationResult.Close.toString("SetOperationResult.Close"));
   qDebug().nospace().noquote() << QString::fromStdString(m_Timers.SetOperationResult.Release.toString("SetOperationResult.Release"));
   qDebug().nospace().noquote() << QString::fromStdString(m_Timers.SetOperationResult.SetFileAttributesW.toString("SetOperationResult.SetFileAttributesW"));
-
-  delete m_ProgressCallback;
-  delete m_FileChangeCallback;
-  delete m_ErrorCallback;
 }
 
 STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)
@@ -220,15 +215,13 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
         m_FullProcessedPaths.push_back(fullProcessedPath);
       }
 
-      m_OutputFileStream = new MultiOutputStream();
-      
-      /* [this](UInt32 size, UInt64 totalSize) {
+      m_OutputFileStream = new MultiOutputStream([this](UInt32 size, UInt64 totalSize) {
         m_ExtractedFileSize += size;
-        if (m_ProgressCallback != nullptr) {
+        if (m_ProgressCallback) {
           float percentage = static_cast<float>(m_ExtractedFileSize) / static_cast<float>(m_TotalFileSize);
-          (*m_ProgressCallback)(percentage);
+          m_ProgressCallback(percentage);
         }
-      }); */
+      });
       CComPtr<MultiOutputStream> outStreamCom(m_OutputFileStream);
 
       if (!m_OutputFileStream->Open(m_FullProcessedPaths)) {
@@ -236,8 +229,9 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
         return E_ABORT;
       }
 
-      UInt64 fileSize = getProperty<UInt64>(index, kpidSize);
-      if (m_OutputFileStream->SetSize(fileSize) != S_OK) {
+      UInt64 fileSize;
+      auto fileSizeFound = getOptionalProperty(index, kpidSize, &fileSize);
+      if (fileSizeFound && m_OutputFileStream->SetSize(fileSize) != S_OK) {
         qDebug().nospace().noquote() << "SetSize() failed.";
       }
 
@@ -248,9 +242,9 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
       *outStream = outStreamCom.Detach();
     }
 
-    /* if (m_FileChangeCallback != nullptr) {
-      (*m_FileChangeCallback)(filenames[0]);
-    } */
+    if (m_FileChangeCallback) {
+      m_FileChangeCallback(filenames[0].toStdWString());
+    }
 
     return S_OK;
   }
@@ -314,11 +308,11 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
 STDMETHODIMP CArchiveExtractCallback::CryptoGetTextPassword(BSTR *passwordOut)
 {
   // if we've already got a password, don't ask again (and again...)
-  if (m_Password->isEmpty() && m_PasswordCallback != nullptr) {
-    (*m_PasswordCallback)(m_Password);
+  if (m_Password->empty() && m_PasswordCallback) {
+    *m_Password = m_PasswordCallback();
   }
 
-  *passwordOut = ::SysAllocString(m_Password->toStdWString().c_str());
+  *passwordOut = ::SysAllocString(m_Password->c_str());
   return *passwordOut != 0 ? S_OK : E_OUTOFMEMORY;
 }
 
@@ -329,9 +323,9 @@ void CArchiveExtractCallback::SetCanceled(bool aCanceled)
 }
 
 
-void CArchiveExtractCallback::reportError(const QString &message)
+void CArchiveExtractCallback::reportError(std::wstring const& message)
 {
-  if (m_ErrorCallback != nullptr) {
-    (*m_ErrorCallback)(message);
+  if (m_ErrorCallback) {
+    m_ErrorCallback(message);
   }
 }

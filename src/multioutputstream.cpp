@@ -56,9 +56,9 @@ STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *pro
     }
     if (update_processed) {
       m_ProcessedSize += realProcessedSize;
-      /* if (m_WriteCallback) {
+      if (m_WriteCallback) {
         m_WriteCallback(realProcessedSize, m_ProcessedSize);
-      } */
+      }
       update_processed = false;
     }
     if (processedSize != nullptr) {

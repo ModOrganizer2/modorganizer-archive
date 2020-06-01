@@ -28,9 +28,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 
-#include <QDir>
-#include <QFileInfo>
+#include "fileio.h"
 
+#include <filesystem>
 #include <string>
 
 class CArchiveOpenCallback: public IArchiveOpenCallback,
@@ -46,11 +46,11 @@ class CArchiveOpenCallback: public IArchiveOpenCallback,
 
 public:
 
-  CArchiveOpenCallback(PasswordCallback* passwordCallback, QFileInfo const &fileinfo);
+  CArchiveOpenCallback(PasswordCallback passwordCallback, std::filesystem::path const &filepath);
 
   ~CArchiveOpenCallback() { }
 
-  QString GetPassword() const { return m_Password; }
+  const std::wstring& GetPassword() const { return m_Password; }
 
   INTERFACE_IArchiveOpenCallback(;)
   INTERFACE_IArchiveOpenVolumeCallback(;)
@@ -64,11 +64,11 @@ public:
 
 private:
 
-  PasswordCallback *m_PasswordCallback;
-  QString m_Password;
+  PasswordCallback m_PasswordCallback;
+  std::wstring m_Password;
 
-  QDir m_Path;
-  QFileInfo m_FileInfo;
+  std::filesystem::path m_Path;
+  IO::FileInfo m_FileInfo;
 
   bool m_SubArchiveMode;
   std::wstring m_SubArchiveName;

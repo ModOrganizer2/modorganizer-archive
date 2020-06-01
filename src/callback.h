@@ -21,72 +21,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef CALLBACK_H
 #define CALLBACK_H
 
-
-class QString;
-
-template <typename RET, typename PAR>
-class Callback
-{
-
-public:
-
-  virtual RET operator()(PAR parameter) = 0;
-
-};
-
-
-template <typename RET, typename PAR>
-class FunctionCallback : public Callback<RET, PAR>
-{
-public:
-
-  typedef RET (*Function)(PAR);
-
-public:
-
-  FunctionCallback(Function function)
-    : m_Function(function)
-  {
-  }
-
-  virtual RET operator()(PAR parameter) {
-    return m_Function(parameter);
-  }
-
-private:
-
-  Function m_Function;
-};
-
-
-template <class CLASS, typename RET, typename PAR>
-class MethodCallback : public Callback<RET, PAR>
-{
-public:
-
- typedef RET (CLASS::*Method)(PAR);
-
- MethodCallback(CLASS* object, Method method)
-   : m_Object(object), m_Method(method)
- {}
-
- virtual RET operator()(PAR parameter) {
-    return (m_Object->*m_Method)(parameter);
- }
-
-private:
-
- CLASS* m_Object;
- Method m_Method;
-
-};
+#include <functional>
+#include <string>
 
 static const int MAX_PASSWORD_LENGTH = 256;
 
-typedef Callback<void, float> ProgressCallback;
-typedef Callback<void, QString *> PasswordCallback;
-typedef Callback<void, QString const &> FileChangeCallback;
-typedef Callback<void, QString const &> ErrorCallback;
-
+using ProgressCallback = std::function<void(float)>;
+using PasswordCallback = std::function<std::wstring()>;
+using FileChangeCallback = std::function<void(std::wstring const&)>;
+using ErrorCallback = std::function<void(std::wstring const&)>;
 
 #endif // CALLBACK_H

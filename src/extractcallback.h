@@ -73,16 +73,16 @@ class CArchiveExtractCallback: public IArchiveExtractCallback,
 
 public:
 
-  CArchiveExtractCallback(ProgressCallback *progressCallback,
-                          FileChangeCallback *fileChangeCallback,
-                          ErrorCallback *errorCallback,
-                          PasswordCallback *passwordCallback,
+  CArchiveExtractCallback(ProgressCallback progressCallback,
+                          FileChangeCallback fileChangeCallback,
+                          ErrorCallback errorCallback,
+                          PasswordCallback passwordCallback,
                           IInArchive *archiveHandler,
-                          const QString &directoryPath,
+                          std::wstring const& directoryPath,
                           FileData * const *fileData,
                           std::size_t nbFiles,
                           UInt64 totalFileSize,
-                          QString *password);
+                          std::wstring *password);
 
   virtual ~CArchiveExtractCallback();
 
@@ -95,13 +95,12 @@ public:
 
 private:
 
-  void reportError(const QString &message);
+  void reportError(const std::wstring& message);
 
   template <class... Args>
   void reportError(const wchar_t* format, Args&& ...args)
   {
-    auto message = fmt::format(format, std::forward<Args>(args)...);
-    reportError(QString::fromStdWString(message));
+    reportError(fmt::format(format, std::forward<Args>(args)...));
   }
 
   template <typename T> bool getOptionalProperty(UInt32 index, int property, T *result) const;
@@ -189,12 +188,12 @@ private:
   UInt64 m_TotalFileSize;
   UInt64 m_LastCallbackFileSize;
   UInt64 m_ExtractedFileSize;
-  QString *m_Password;
 
-  ProgressCallback *m_ProgressCallback;
-  FileChangeCallback *m_FileChangeCallback;
-  ErrorCallback *m_ErrorCallback;
-  PasswordCallback *m_PasswordCallback;
+  ProgressCallback m_ProgressCallback;
+  FileChangeCallback m_FileChangeCallback;
+  ErrorCallback m_ErrorCallback;
+  PasswordCallback m_PasswordCallback;
+  std::wstring* m_Password;
 
 };
 

@@ -1,9 +1,6 @@
 #include <Unknwn.h>
 #include "inputstream.h"
 
-#include <QDir>
-#include <QString>
-
 static inline HRESULT ConvertBoolToHRESULT(bool result)
 {
   if (result) {
@@ -19,49 +16,37 @@ static inline HRESULT ConvertBoolToHRESULT(bool result)
 InputStream::InputStream()
 {}
 
-InputStream::~InputStream()
-{}
+InputStream::~InputStream() { }
 
 
-bool InputStream::Open(const QString &filename)
+bool InputStream::Open(std::filesystem::path const& filename)
 {
-  m_File.setFileName(filename);
-  return m_File.open(QIODevice::ReadOnly);
+  return m_File.Open(filename);
 }
 
 STDMETHODIMP InputStream::Read(void *data, UInt32 size, UInt32 *processedSize)
 {
-  qint64 realProcessedSize = m_File.read(static_cast<char *>(data), size);
+  UInt32 realProcessedSize;
+  bool result =  m_File.Read(data, size, realProcessedSize);
+
   if (processedSize != nullptr) {
-    *processedSize = realProcessedSize == -1 ? 0 : static_cast<UInt32>(realProcessedSize);
+    *processedSize = realProcessedSize;
   }
 
-  return ConvertBoolToHRESULT(realProcessedSize != -1);
+  if (result) {
+    return S_OK;
+  }
+
+  return HRESULT_FROM_WIN32(::GetLastError());
 }
 
 STDMETHODIMP InputStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64 *newPosition)
 {
-  qint64 realNewPosition = offset;
-  switch (seekOrigin)
-  {
-    default:
-      return STG_E_INVALIDFUNCTION;
+  UInt64 realNewPosition = offset;
+  bool result = m_File.Seek(offset, seekOrigin, realNewPosition);
 
-    case FILE_BEGIN:
-      break;
-
-    case FILE_CURRENT:
-      realNewPosition += m_File.pos();
-      break;
-
-    case FILE_END:
-      realNewPosition += m_File.size();
-  }
-
-  bool result = m_File.seek(realNewPosition);
-  if (result && newPosition != nullptr) {
-    *newPosition = static_cast<UInt64>(realNewPosition);
+  if (newPosition) {
+    *newPosition = realNewPosition;
   }
   return ConvertBoolToHRESULT(result);
-
 }

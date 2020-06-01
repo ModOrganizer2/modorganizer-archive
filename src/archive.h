@@ -73,14 +73,14 @@ public:
 
   virtual Error getLastError() const = 0;
 
-  virtual bool open(QString const &archiveName, PasswordCallback *passwordCallback) = 0;
+  virtual bool open(std::wstring const &archiveName, PasswordCallback passwordCallback) = 0;
 
   virtual void close() = 0;
 
   virtual bool getFileList(FileData* const *&data, size_t &size) = 0;
 
-  virtual bool extract(QString const &outputDirectory, ProgressCallback *progressCallback,
-                       FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback) = 0;
+  virtual bool extract(std::wstring const &outputDirectory, ProgressCallback progressCallback,
+                       FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) = 0;
 
   virtual void cancel() = 0;
 

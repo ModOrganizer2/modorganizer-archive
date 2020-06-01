@@ -1,12 +1,13 @@
 #ifndef INPUTSTREAM_H
 #define INPUTSTREAM_H
 
-#include "unknown_impl.h"
 
 #include "7zip/IStream.h"
 
-#include <QFile>
-class QString;
+#include <filesystem>
+
+#include "fileio.h"
+#include "unknown_impl.h"
 
 /** This class implements an input stream for opening archive files
  *
@@ -23,13 +24,13 @@ public:
 
   virtual ~InputStream();
 
-  bool Open(QString const &filename);
+  bool Open(std::filesystem::path const &filename);
 
   STDMETHOD(Read)(void *data, UInt32 size, UInt32 *processedSize);
   STDMETHOD(Seek)(Int64 offset, UInt32 seekOrigin, UInt64 *newPosition);
 
 private:
-  QFile m_File;
+  IO::FileIn m_File;
 };
 
 #endif // INPUTSTREAM_H
