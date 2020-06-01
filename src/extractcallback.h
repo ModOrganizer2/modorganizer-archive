@@ -33,26 +33,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <fmt/format.h>
 #include <chrono>
 
-template<>
-struct fmt::formatter<std::error_code, wchar_t>: formatter<std::wstring, wchar_t>
-{
-  template<typename FormatContext>
-  auto format(std::error_code const& ec, FormatContext& ctx) {
-    // Need to move error_code to a wide string...
-    auto s = ec.message();
-    return formatter<std::wstring, wchar_t>::format(std::wstring(s.begin(), s.end()), ctx);
-  }
-};
-
-template<>
-struct fmt::formatter<std::filesystem::path, wchar_t> : formatter<std::wstring, wchar_t>
-{
-  template<typename FormatContext>
-  auto format(std::filesystem::path const& path, FormatContext& ctx) {
-    return formatter<std::wstring, wchar_t>::format(path.native(), ctx);
-  }
-};
-
+#include "formatter.h"
 
 #include <QDir>
 #include <filesystem>

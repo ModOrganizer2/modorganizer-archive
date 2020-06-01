@@ -30,8 +30,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 #include <stdexcept>
 
-#include <QDebug>
-
 std::wstring operationResultToString(Int32 operationResult)
 {
   namespace R = NArchive::NExtract::NOperationResult;
@@ -131,7 +129,7 @@ template <typename T> bool CArchiveExtractCallback::getOptionalProperty(UInt32 i
 {
   PropertyVariant prop;
   if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
-    qDebug() << "Error getting property" << property;
+    m_LogCallback(NArchive::LogLevel::Error, fmt::format(L"Error getting property {}.", property));
     return false;
   }
   if (prop.is_empty()) {
@@ -227,14 +225,14 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
       CComPtr<MultiOutputStream> outStreamCom(m_OutputFileStream);
 
       if (!m_OutputFileStream->Open(m_FullProcessedPaths)) {
-        reportError(L"cannot open output file '{}': {}", m_FullProcessedPaths[0].native(), GetLastError());
+        reportError(L"cannot open output file '{}': {}", m_FullProcessedPaths[0], ::GetLastError());
         return E_ABORT;
       }
 
       UInt64 fileSize;
       auto fileSizeFound = getOptionalProperty(index, kpidSize, &fileSize);
       if (fileSizeFound && m_OutputFileStream->SetSize(fileSize) != S_OK) {
-        qDebug().nospace().noquote() << "SetSize() failed.";
+        m_LogCallback(NArchive::LogLevel::Error, fmt::format(L"SetSize() failed on {}.", m_FullProcessedPaths[0]));
       }
 
       //This is messy but I can't find another way of doing it. A simple
@@ -252,7 +250,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
   }
   catch (std::exception const &e)
   {
-    qDebug() << "Caught exception " << e.what() << " in GetStream";
+    m_LogCallback(NArchive::LogLevel::Error, fmt::format(L"Caught exception {} in GetStream.", e));
   }
   return E_FAIL;
 }
