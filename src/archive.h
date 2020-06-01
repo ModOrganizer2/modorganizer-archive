@@ -22,12 +22,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef ARCHIVE_H
 #define ARCHIVE_H
 
+#include <cstdint>
+#include <string>
+
 #include "callback.h"
-
-class QString;
-
-#include <stdint.h>
-#include <vector>
 
 #ifndef DLLEXPORT
   #ifdef MODORGANIZER_ARCHIVE_BUILDING
@@ -39,11 +37,41 @@ class QString;
 
 class FileData {
 public:
-  virtual QString getFileName() const = 0;
+
+  /**
+   * @return the full filepath to this entry.
+   */
+  virtual std::wstring getFileName() const = 0;
+
+  /**
+   * @return the size of this entry in bytes (uncompressed).
+   */
   virtual uint64_t getSize() const = 0;
-  virtual void addOutputFileName(QString const &fileName) = 0;
-  virtual std::vector<QString> getAndClearOutputFileNames() = 0;
+
+  /**
+   * @brief Add the given filename to the list of files to create from this
+   *   entry when extracting.
+   *
+   * @param filepath The filename to add.
+   */
+  virtual void addOutputFileName(std::wstring const& filepath) = 0;
+  
+  /**
+   * @brief Retrieve the list of filepaths to extract this entry to and clear the
+   *   internal list.
+   *
+   * @return the list of paths this entry should be extracted to.
+   */
+  virtual std::vector<std::wstring> getAndClearOutputFileNames() = 0;
+  
+  /**
+   * @return the CRC of this file.
+   */
   virtual uint64_t getCRC() const = 0;
+
+  /**
+   * @return true if this entry is a directory, false otherwize.
+   */
   virtual bool isDirectory() const = 0;
 };
 
@@ -79,7 +107,7 @@ public:
 
   virtual void close() = 0;
 
-  virtual bool getFileList(FileData* const *&data, size_t &size) = 0;
+  virtual const std::vector<FileData*>& getFileList() const = 0;
 
   virtual bool extract(std::wstring const &outputDirectory, ProgressCallback progressCallback,
                        FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) = 0;

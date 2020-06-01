@@ -163,7 +163,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     return S_OK;
   }
 
-  std::vector<QString> filenames = m_FileData[index]->getAndClearOutputFileNames();
+  std::vector<std::wstring> filenames = m_FileData[index]->getAndClearOutputFileNames();
   if (filenames.empty()) {
     return S_OK;
   }
@@ -179,8 +179,8 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     m_ProcessedFileInfo.MTimeDefined = getOptionalProperty(index, kpidMTime, &m_ProcessedFileInfo.MTime);
 
     if (m_ProcessedFileInfo.isDir) {
-      for (const QString &filename : filenames) {
-        auto fullpath = m_DirectoryPath / filename.toStdWString();
+      for (auto const& filename : filenames) {
+        auto fullpath = m_DirectoryPath / filename;
         std::error_code ec;
         std::filesystem::create_directories(fullpath, ec);
         if (ec) {
@@ -190,8 +190,8 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
         m_FullProcessedPaths.push_back(fullpath);
       }
     } else {
-      for (const QString &filename : filenames) {
-        auto fullProcessedPath = m_DirectoryPath / filename.toStdWString();
+      for (auto const& filename : filenames) {
+        auto fullProcessedPath = m_DirectoryPath / filename;
         //If the filename contains a '/' we want to make the directory
         auto directoryPath = fullProcessedPath.parent_path();
         if (!fs::exists(directoryPath)) {
@@ -243,7 +243,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     }
 
     if (m_FileChangeCallback) {
-      m_FileChangeCallback(filenames[0].toStdWString());
+      m_FileChangeCallback(filenames[0]);
     }
 
     return S_OK;

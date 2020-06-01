@@ -42,54 +42,32 @@ using LogLevel = NArchive::LogLevel;
 class FileDataImpl : public FileData {
   friend class Archive;
 public:
-  FileDataImpl(const QString &fileName, UInt64 size, UInt64 crc, bool isDirectory);
+  FileDataImpl(std::wstring const& fileName, UInt64 size, UInt64 crc, bool isDirectory)
+    : m_FileName(fileName), m_Size(size), m_CRC(crc), m_IsDirectory(isDirectory) { }
 
-  virtual QString getFileName() const override;
+  virtual std::wstring getFileName() const override { return m_FileName; }
   virtual uint64_t getSize() const override { return m_Size; }
-  virtual void addOutputFileName(QString const &fileName) override;
-  virtual std::vector<QString> getAndClearOutputFileNames() override;
+
+  virtual void addOutputFileName(std::wstring const &fileName) override {
+    m_OutputFileNames.push_back(fileName);
+  }
+  virtual std::vector<std::wstring> getAndClearOutputFileNames() override {
+    std::vector<std::wstring> result;
+    std::swap(m_OutputFileNames, result);
+    return result;
+  }
+
   bool isEmpty() const { return m_OutputFileNames.empty(); }
   virtual bool isDirectory() const override { return m_IsDirectory; }
-  virtual uint64_t getCRC() const override;
+  virtual uint64_t getCRC() const override { return m_CRC; }
 
 private:
-  QString m_FileName;
+  std::wstring m_FileName;
   UInt64 m_Size;
   UInt64 m_CRC;
-  std::vector<QString> m_OutputFileNames;
+  std::vector<std::wstring> m_OutputFileNames;
   bool m_IsDirectory;
 };
-
-
-QString FileDataImpl::getFileName() const
-{
-  return m_FileName;
-}
-
-void FileDataImpl::addOutputFileName(const QString &fileName)
-{
-  m_OutputFileNames.push_back(fileName);
-}
-
-std::vector<QString> FileDataImpl::getAndClearOutputFileNames()
-{
-  std::vector<QString> result;
-  std::swap(m_OutputFileNames, result);
-  return result;
-}
-
-uint64_t FileDataImpl::getCRC() const {
-  return m_CRC;
-}
-
-
-FileDataImpl::FileDataImpl(const QString &fileName, UInt64 size, UInt64 crc, bool isDirectory)
-  : m_FileName(fileName)
-  , m_Size(size)
-  , m_CRC(crc)
-  , m_IsDirectory(isDirectory)
-{
-}
 
 
 /// represents the connection to one archive and provides common functionality
@@ -112,13 +90,13 @@ public:
     m_LogCallback = logCallback ? logCallback : DefaultLogCallback;
   }
 
-  virtual bool open(std::wstring const &archiveName, PasswordCallback passwordCallback);
-  virtual void close();
-  virtual bool getFileList(FileData* const *&data, size_t &size);
-  virtual bool extract(std::wstring const &outputDirectory, ProgressCallback progressCallback,
-                       FileChangeCallback fileChangeCallback, ErrorCallback errorCallback);
+  virtual bool open(std::wstring const &archiveName, PasswordCallback passwordCallback) override;
+  virtual void close() override;
+  const std::vector<FileData*>& getFileList() const override { return m_FileList; }
+  virtual bool extract(std::wstring const& outputDirectory, ProgressCallback progressCallback,
+                       FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) override;
 
-  virtual void cancel();
+  virtual void cancel() override;
 
   void operator delete(void* ptr) {
     ::operator delete(ptr);
@@ -396,8 +374,9 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
         else {
           m_LogCallback(LogLevel::Debug, fmt::format(L"Opened {} using {} (from signature).",
             archiveName, signatureInfo.second.m_Name));
-          QString extension = QString::fromStdWString(filepath.extension());
-          std::wstring ext(extension.toStdWString());
+
+          // Retrieve the extension (warning: .extension() contains the dot):
+          std::wstring ext = NArchive::towlower(filepath.extension().native().substr(1));
           std::wistringstream s(signatureInfo.second.m_Extensions);
           std::wstring t;
           bool found = false;
@@ -426,8 +405,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
   {
     // determine archive type based on extension
     Formats const *formats = nullptr;
-    QString extension = QString::fromStdWString(filepath.extension());
-    std::wstring ext(extension.toStdWString());
+    std::wstring ext = NArchive::towlower(filepath.extension().native().substr(1));
     FormatMap::const_iterator map_iter = m_FormatMap.find(ext);
     if (map_iter != m_FormatMap.end()) {
       formats = &map_iter->second;
@@ -548,21 +526,12 @@ void ArchiveImpl::resetFileList()
   m_ArchivePtr->GetNumberOfItems(&numItems);
 
   for (UInt32 i = 0; i < numItems; ++i) {
-    m_FileList.push_back(new FileDataImpl(readProperty<QString>(i, kpidPath),
+    m_FileList.push_back(new FileDataImpl(readProperty<std::wstring>(i, kpidPath),
                                           readProperty<UInt64>(i, kpidSize),
                                           readProperty<UInt64>(i, kpidCRC),
                                           readProperty<bool>(i, kpidIsDir)));
   }
 }
-
-
-bool ArchiveImpl::getFileList(FileData* const *&data, size_t &size)
-{
-  data = &m_FileList[0];
-  size = m_FileList.size();
-  return true;
-}
-
 
 bool ArchiveImpl::extract(std::wstring const& outputDirectory, ProgressCallback progressCallback,
                           FileChangeCallback fileChangeCallback, ErrorCallback errorCallback)
