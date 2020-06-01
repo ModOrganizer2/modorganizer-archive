@@ -25,10 +25,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "inputstream.h"
 #include "opencallback.h"
 #include "propertyvariant.h"
+#include "library.h"
 
 #include <QDebug>
-#include <QDir>
-#include <QLibrary>
 
 #include <algorithm>
 #include <map>
@@ -145,7 +144,7 @@ private:
   bool m_Valid;
   Error m_LastError;
 
-  QLibrary m_Library;
+  ALibrary  m_Library;
   std::wstring m_ArchiveName; //TBH I don't think this is required
   CComPtr<IInArchive> m_ArchivePtr;
   CArchiveExtractCallback *m_ExtractCallback;
@@ -202,7 +201,7 @@ template <typename T> T ArchiveImpl::readProperty(UInt32 index, PROPID propID) c
 HRESULT ArchiveImpl::loadFormats()
 {
   typedef UInt32 (WINAPI *GetNumberOfFormatsFunc)(UInt32 *numFormats);
-  GetNumberOfFormatsFunc getNumberOfFormats = reinterpret_cast<GetNumberOfFormatsFunc>(m_Library.resolve("GetNumberOfFormats"));
+  GetNumberOfFormatsFunc getNumberOfFormats = m_Library.resolve<GetNumberOfFormatsFunc>("GetNumberOfFormats");
   if (getNumberOfFormats == nullptr) {
     return E_FAIL;
   }
@@ -282,18 +281,18 @@ ArchiveImpl::ArchiveImpl()
   , m_Library("dlls/7z")
   , m_PasswordCallback{}
 {
-  if (!m_Library.load()) {
+  if (!m_Library) {
     m_LastError = ERROR_LIBRARY_NOT_FOUND;
     return;
   }
 
-  m_CreateObjectFunc = reinterpret_cast<CreateObjectFunc>(m_Library.resolve("CreateObject"));
+  m_CreateObjectFunc = m_Library.resolve< CreateObjectFunc>("CreateObject");
   if (m_CreateObjectFunc == nullptr) {
     m_LastError = ERROR_LIBRARY_INVALID;
     return;
   }
 
-  m_GetHandlerPropertyFunc = reinterpret_cast<GetPropertyFunc>(m_Library.resolve("GetHandlerProperty2"));
+  m_GetHandlerPropertyFunc = m_Library.resolve< GetPropertyFunc>("GetHandlerProperty2");
   if (m_GetHandlerPropertyFunc == nullptr) {
     m_LastError = ERROR_LIBRARY_INVALID;
     return;
