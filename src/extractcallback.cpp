@@ -84,7 +84,7 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallba
     std::wstring *password)
   : m_ArchiveHandler(archiveHandler)
   , m_Total(0)
-  , m_DirectoryPath(directoryPath)
+  , m_DirectoryPath()
   , m_Extracting(false)
   , m_Canceled(false)
   , m_Timers{}
@@ -103,6 +103,9 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallba
   , m_LogCallback(logCallback)
   , m_Password(password)
 {
+
+  m_DirectoryPath = directoryPath.starts_with(L"\\\\?\\") ? directoryPath : L"\\\\?\\" + directoryPath;
+  m_DirectoryPath.make_preferred();
 }
 
 CArchiveExtractCallback::~CArchiveExtractCallback()
@@ -180,7 +183,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
 
     if (m_ProcessedFileInfo.isDir) {
       for (auto const& filename : filenames) {
-        auto fullpath = m_DirectoryPath / filename;
+        auto fullpath = m_DirectoryPath / fs::path(filename).make_preferred();
         std::error_code ec;
         std::filesystem::create_directories(fullpath, ec);
         if (ec) {
@@ -191,7 +194,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
       }
     } else {
       for (auto const& filename : filenames) {
-        auto fullProcessedPath = m_DirectoryPath / filename;
+        auto fullProcessedPath = m_DirectoryPath / fs::path(filename).make_preferred();
         //If the filename contains a '/' we want to make the directory
         auto directoryPath = fullProcessedPath.parent_path();
         if (!fs::exists(directoryPath)) {

@@ -316,8 +316,9 @@ bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwor
   
   Formats formatList = m_Formats;
 
-  // TODO: Check long filename handling:
-  std::filesystem::path filepath(archiveName);
+  // Convert to long path if it's not already:
+  std::filesystem::path filepath = archiveName.starts_with(L"\\\\?\\") ? archiveName : L"\\\\?\\" + archiveName;
+  filepath.make_preferred();
 
   // If it doesn't exist or is a directory, error
   if (!exists(filepath) || is_directory(filepath)) {

@@ -56,7 +56,6 @@ namespace IO {
       return false;
     }
 
-    // TODO: Long path handling?
     m_Handle = ::CreateFileW(path.c_str(), desiredAccess, shareMode,
       (LPSECURITY_ATTRIBUTES)NULL, creationDisposition, flagsAndAttributes, (HANDLE)NULL);
 
