@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "callback.h"
 #include "multioutputstream.h"
 #include "unknown_impl.h"
+#include "instrument.h"
 
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
@@ -117,57 +118,14 @@ private:
   bool m_Extracting;
   bool m_Canceled;
 
-  struct Timer {
 
-    using clock_t = std::chrono::system_clock;
-
-    struct TimerGuard {
-
-      TimerGuard(TimerGuard const&) = delete;
-      TimerGuard(TimerGuard &&) = delete;
-      TimerGuard& operator=(TimerGuard const&) = delete;
-      TimerGuard& operator=(TimerGuard &&) = delete;
-
-      ~TimerGuard() {
-        m_Timer.ncalls++;
-        m_Timer.time += clock_t::now() - m_Start;
-      }
-
-    private:
-      TimerGuard(Timer& timer) : m_Timer{ timer }, m_Start{ clock_t::now() } { }
-
-      Timer& m_Timer;
-      clock_t::time_point m_Start;
-
-      friend class Timer;
-    };
-
-    Timer() = default;
-
-    TimerGuard instrument() {
-      return { *this };
-    }
-
-    std::string toString(std::string const& name) const {
-      auto ms = [](auto&& t) { return std::chrono::duration<double, std::milli>(t); };
-      return fmt::format("Instrument '{}': {} calls, total of {}ms, {:.3f}ms per call on average.",
-        name, ncalls, ms(time).count(), ms(time).count() / ncalls);
-    }
-
-  private:
-
-    std::size_t ncalls{ 0 };
-    clock_t::duration time{ 0 };
-
-  };
-
-  struct Timers {
-    Timer GetStream;
+  struct {
+    NArchive::Timer GetStream;
     struct {
-      Timer SetMTime;
-      Timer Close;
-      Timer Release;
-      Timer SetFileAttributesW;
+      NArchive::Timer SetMTime;
+      NArchive::Timer Close;
+      NArchive::Timer Release;
+      NArchive::Timer SetFileAttributesW;
     } SetOperationResult;
   } m_Timers;
 

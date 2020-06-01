@@ -109,11 +109,11 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallba
 
 CArchiveExtractCallback::~CArchiveExtractCallback()
 {
-  qDebug().nospace().noquote() << QString::fromStdString(m_Timers.GetStream.toString("GetStream"));
-  qDebug().nospace().noquote() << QString::fromStdString(m_Timers.SetOperationResult.SetMTime.toString("SetOperationResult.SetMTime"));
-  qDebug().nospace().noquote() << QString::fromStdString(m_Timers.SetOperationResult.Close.toString("SetOperationResult.Close"));
-  qDebug().nospace().noquote() << QString::fromStdString(m_Timers.SetOperationResult.Release.toString("SetOperationResult.Release"));
-  qDebug().nospace().noquote() << QString::fromStdString(m_Timers.SetOperationResult.SetFileAttributesW.toString("SetOperationResult.SetFileAttributesW"));
+  m_LogCallback(NArchive::LogLevel::Debug, m_Timers.GetStream.toString(L"GetStream"));
+  m_LogCallback(NArchive::LogLevel::Debug, m_Timers.SetOperationResult.SetMTime.toString(L"SetOperationResult.SetMTime"));
+  m_LogCallback(NArchive::LogLevel::Debug, m_Timers.SetOperationResult.Close.toString(L"SetOperationResult.Close"));
+  m_LogCallback(NArchive::LogLevel::Debug, m_Timers.SetOperationResult.Release.toString(L"SetOperationResult.Release"));
+  m_LogCallback(NArchive::LogLevel::Debug, m_Timers.SetOperationResult.SetFileAttributesW.toString(L"SetOperationResult.SetFileAttributesW"));
 }
 
 STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)

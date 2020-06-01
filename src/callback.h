@@ -29,7 +29,7 @@ namespace NArchive {
   enum class LogLevel {
     Debug,
     Info,
-    Warn,
+    Warning,
     Error
   };
 
