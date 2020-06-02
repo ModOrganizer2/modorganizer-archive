@@ -147,12 +147,29 @@ namespace IO {
    *   the Windows long-path prefix.
    *
    * @param path The string containing the absolute path.
+   * @param exists true if the path should exists, false otherwize.
    *
    * @return the created path.
    */
-  inline std::filesystem::path make_path(std::wstring const& path) {
-    std::filesystem::path p = path.starts_with(L"\\\\?\\") ? path : L"\\\\?\\" + path;
-    return p.make_preferred();
+  inline std::filesystem::path make_path(std::wstring const& pathstr) {
+    namespace fs = std::filesystem;
+    constexpr const wchar_t* lprefix = L"\\\\?\\";
+
+    // If path is already a long path, just return it:
+    if (pathstr.starts_with(lprefix)) {
+      return fs::path{ pathstr }.make_preferred();
+    }
+
+    fs::path path{ pathstr };
+
+    // Convert to an absolute path:
+    if (!path.is_absolute()) {
+      path = fs::absolute(path);
+    }
+
+    // Add the long-path prefix (cannot concatenate string an path so need
+    // to call .native() to concatenate):
+    return fs::path{ lprefix + path.native() }.make_preferred();
   }
 
 }
