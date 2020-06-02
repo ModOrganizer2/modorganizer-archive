@@ -4,11 +4,33 @@
 
 This module provides a wrapper round the 7zip `7z.dll` allowing easy(ish) access to the contents of an archive.
 
+## How to build?
+
+If you want to build this as par of ModOrganizer2, simply use ModOrganizer2 build system.
+
+If you want to build this as a standalone DLL, you can run the following (requires `cmake >= 3.16`):
+
+```batch
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
+```
+
+This will download the two required dependencies (7z sources and [`fmtlib`](https://github.com/fmtlib/fmt)), and
+build the DLL under `build/src/Release`.
+
+In order to use the DLL, you need to have the `7z.dll` available in your path, otherwize `CreateArchive()` will
+always fail. You can get the `7z.dll` by installing `7z.exe` or by building 7z yourself (building `archive` does
+not build `7z`).
+
 ## The `Archive` class
 
-As this is a DLL you need to load it as an archive.
+The first thing to do is to create an archive wrapper:
 
 ```cpp
+#include <archive.h>
+
 std::unique_ptr<Archive> CreateArchive();
 ```
 
