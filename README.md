@@ -4,16 +4,18 @@
 
 This module provides a wrapper round the 7zip `7z.dll` allowing easy(ish) access to the contents of an archive.
 
+## The `Archive` class
+
 As this is a DLL you need to load it as an archive.
 
 ```cpp
 std::unique_ptr<Archive> CreateArchive();
 ```
 
-## The `Archive` class
+This creates an archive handler.
 
-This creates an archive handler. You can check the [src/archive.h](src/archive.h) header for more details.
-The following methods are available:
+You can check the [src/archive.h](src/archive.h) header for more details but here are some
+of the available methods:
 
 ```cpp
 /**
@@ -150,8 +152,8 @@ Below is a full example on how to extract an archive to a given folder:
 int main() {
 
     // Path to the archive and to the output folder:
-    const std::wstring archivePath = L"C:\\Downloads\\archive.7z";
-    const std::wstring outputFolder = L"C:\\Downloads\\output";
+    const std::wstring archivePath = L"archive.7z";
+    const std::wstring outputFolder = L"output";
 
     auto archive = CreateArchive();
 
