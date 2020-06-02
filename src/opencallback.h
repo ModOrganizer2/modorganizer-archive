@@ -22,16 +22,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef OPENCALLBACK_H
 #define OPENCALLBACK_H
 
-#include "callback.h"
-#include "unknown_impl.h"
+#include <filesystem>
+#include <string>
 
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 
+#include "archive.h"
 #include "fileio.h"
+#include "unknown_impl.h"
 
-#include <filesystem>
-#include <string>
 
 class CArchiveOpenCallback: public IArchiveOpenCallback,
                             public IArchiveOpenVolumeCallback,
@@ -46,7 +46,7 @@ class CArchiveOpenCallback: public IArchiveOpenCallback,
 
 public:
 
-  CArchiveOpenCallback(ArchiveCallbacks::PasswordCallback passwordCallback, ArchiveCallbacks::LogCallback logCallback, std::filesystem::path const &filepath);
+  CArchiveOpenCallback(Archive::PasswordCallback passwordCallback, Archive::LogCallback logCallback, std::filesystem::path const &filepath);
 
   ~CArchiveOpenCallback() { }
 
@@ -64,8 +64,8 @@ public:
 
 private:
 
-  ArchiveCallbacks::PasswordCallback m_PasswordCallback;
-  ArchiveCallbacks::LogCallback m_LogCallback;
+  Archive::PasswordCallback m_PasswordCallback;
+  Archive::LogCallback m_LogCallback;
   std::wstring m_Password;
 
   std::filesystem::path m_Path;

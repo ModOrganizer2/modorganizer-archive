@@ -37,8 +37,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 namespace PropID = NArchive::NHandlerPropID;
 
-using namespace ArchiveCallbacks;
-
 class FileDataImpl : public FileData {
   friend class Archive;
 public:
@@ -165,7 +163,7 @@ private:
   std::size_t m_MaxSignatureLen = 0;
 };
 
-LogCallback ArchiveImpl::DefaultLogCallback([](LogLevel, std::wstring const&) {});
+Archive::LogCallback ArchiveImpl::DefaultLogCallback([](LogLevel, std::wstring const&) {});
 
 template <typename T> T ArchiveImpl::readHandlerProperty(UInt32 index, PROPID propID) const
 {

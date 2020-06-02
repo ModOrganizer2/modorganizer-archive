@@ -22,22 +22,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef EXTRACTCALLBACK_H
 #define EXTRACTCALLBACK_H
 
-#include "callback.h"
-#include "multioutputstream.h"
-#include "unknown_impl.h"
-#include "instrument.h"
+#include <chrono>
+#include <filesystem>
 
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 
-#include <fmt/format.h>
-#include <chrono>
-
-#include "formatter.h"
-
-#include <filesystem>
-
 #include <atlbase.h>
+
+#include <fmt/format.h>
+
+#include "archive.h"
+#include "formatter.h"
+#include "instrument.h"
+#include "multioutputstream.h"
+#include "unknown_impl.h"
+
 
 class FileData;
 
@@ -53,11 +53,12 @@ class CArchiveExtractCallback: public IArchiveExtractCallback,
 
 public:
 
-  CArchiveExtractCallback(ArchiveCallbacks::ProgressCallback progressCallback,
-    ArchiveCallbacks::FileChangeCallback fileChangeCallback,
-    ArchiveCallbacks::ErrorCallback errorCallback,
-    ArchiveCallbacks::PasswordCallback passwordCallback,
-    ArchiveCallbacks::LogCallback logCallback,
+  CArchiveExtractCallback(
+    Archive::ProgressCallback progressCallback,
+    Archive::FileChangeCallback fileChangeCallback,
+    Archive::ErrorCallback errorCallback,
+    Archive::PasswordCallback passwordCallback,
+    Archive::LogCallback logCallback,
     IInArchive *archiveHandler,
     std::wstring const& directoryPath,
     FileData * const *fileData,
@@ -127,11 +128,11 @@ private:
   UInt64 m_LastCallbackFileSize;
   UInt64 m_ExtractedFileSize;
 
-  ArchiveCallbacks::ProgressCallback m_ProgressCallback;
-  ArchiveCallbacks::FileChangeCallback m_FileChangeCallback;
-  ArchiveCallbacks::ErrorCallback m_ErrorCallback;
-  ArchiveCallbacks::PasswordCallback m_PasswordCallback;
-  ArchiveCallbacks::LogCallback m_LogCallback;
+  Archive::ProgressCallback m_ProgressCallback;
+  Archive::FileChangeCallback m_FileChangeCallback;
+  Archive::ErrorCallback m_ErrorCallback;
+  Archive::PasswordCallback m_PasswordCallback;
+  Archive::LogCallback m_LogCallback;
   std::wstring* m_Password;
 
 };

@@ -30,8 +30,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 #include <stdexcept>
 
-using namespace ArchiveCallbacks;
-
 std::wstring operationResultToString(Int32 operationResult)
 {
   namespace R = NArchive::NExtract::NOperationResult;
@@ -73,17 +71,18 @@ std::wstring operationResultToString(Int32 operationResult)
   }
 }
 
-CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallback,
-    FileChangeCallback fileChangeCallback,
-    ErrorCallback errorCallback,
-    PasswordCallback passwordCallback,
-    LogCallback logCallback,
-    IInArchive *archiveHandler,
-    std::wstring const& directoryPath,
-    FileData* const *fileData,
-    std::size_t nbFiles,
-    UInt64 totalFileSize,
-    std::wstring *password)
+CArchiveExtractCallback::CArchiveExtractCallback(
+  Archive::ProgressCallback progressCallback,
+  Archive::FileChangeCallback fileChangeCallback,
+  Archive::ErrorCallback errorCallback,
+  Archive::PasswordCallback passwordCallback,
+  Archive::LogCallback logCallback,
+  IInArchive *archiveHandler,
+  std::wstring const& directoryPath,
+  FileData* const *fileData,
+  std::size_t nbFiles,
+  UInt64 totalFileSize,
+  std::wstring *password)
   : m_ArchiveHandler(archiveHandler)
   , m_Total(0)
   , m_DirectoryPath()
@@ -111,11 +110,11 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallba
 CArchiveExtractCallback::~CArchiveExtractCallback()
 {
 #ifdef INSTRUMENT_ARCHIVE
-  m_LogCallback(LogLevel::Debug, m_Timers.GetStream.toString(L"GetStream"));
-  m_LogCallback(LogLevel::Debug, m_Timers.SetOperationResult.SetMTime.toString(L"SetOperationResult.SetMTime"));
-  m_LogCallback(LogLevel::Debug, m_Timers.SetOperationResult.Close.toString(L"SetOperationResult.Close"));
-  m_LogCallback(LogLevel::Debug, m_Timers.SetOperationResult.Release.toString(L"SetOperationResult.Release"));
-  m_LogCallback(LogLevel::Debug, m_Timers.SetOperationResult.SetFileAttributesW.toString(L"SetOperationResult.SetFileAttributesW"));
+  m_LogCallback(Archive::LogLevel::Debug, m_Timers.GetStream.toString(L"GetStream"));
+  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.SetMTime.toString(L"SetOperationResult.SetMTime"));
+  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.Close.toString(L"SetOperationResult.Close"));
+  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.Release.toString(L"SetOperationResult.Release"));
+  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.SetFileAttributesW.toString(L"SetOperationResult.SetFileAttributesW"));
 #endif
 }
 
@@ -127,6 +126,9 @@ STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)
 
 STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64 *completed)
 {
+  if (m_ProgressCallback) {
+    m_ProgressCallback(Archive::ProgressType::ARCHIVE, *completed, m_Total);
+  }
   return m_Canceled ? E_ABORT : S_OK;
 }
 
@@ -134,7 +136,7 @@ template <typename T> bool CArchiveExtractCallback::getOptionalProperty(UInt32 i
 {
   PropertyVariant prop;
   if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
-    m_LogCallback(LogLevel::Error, fmt::format(L"Error getting property {}.", property));
+    m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Error getting property {}.", property));
     return false;
   }
   if (prop.is_empty()) {
@@ -223,8 +225,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
       m_OutputFileStream = new MultiOutputStream([this](UInt32 size, UInt64 totalSize) {
         m_ExtractedFileSize += size;
         if (m_ProgressCallback) {
-          float percentage = static_cast<float>(m_ExtractedFileSize) / static_cast<float>(m_TotalFileSize);
-          m_ProgressCallback(percentage);
+          m_ProgressCallback(Archive::ProgressType::EXTRACTION, m_ExtractedFileSize, m_TotalFileSize);
         }
       });
       CComPtr<MultiOutputStream> outStreamCom(m_OutputFileStream);
@@ -237,7 +238,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
       UInt64 fileSize;
       auto fileSizeFound = getOptionalProperty(index, kpidSize, &fileSize);
       if (fileSizeFound && m_OutputFileStream->SetSize(fileSize) != S_OK) {
-        m_LogCallback(LogLevel::Error, fmt::format(L"SetSize() failed on {}.", m_FullProcessedPaths[0]));
+        m_LogCallback(Archive::LogLevel::Error, fmt::format(L"SetSize() failed on {}.", m_FullProcessedPaths[0]));
       }
 
       //This is messy but I can't find another way of doing it. A simple
@@ -248,14 +249,14 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     }
 
     if (m_FileChangeCallback) {
-      m_FileChangeCallback(filenames[0]);
+      m_FileChangeCallback(Archive::FileChangeType::EXTRACTION_START, filenames[0]);
     }
 
     return S_OK;
   }
   catch (std::exception const &e)
   {
-    m_LogCallback(LogLevel::Error, fmt::format(L"Caught exception {} in GetStream.", e));
+    m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Caught exception {} in GetStream.", e));
   }
   return E_FAIL;
 }

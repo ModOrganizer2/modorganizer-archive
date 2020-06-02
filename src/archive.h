@@ -23,10 +23,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #define ARCHIVE_H
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
-
-#include "callback.h"
 
 #ifndef DLLEXPORT
   #ifdef MODORGANIZER_ARCHIVE_BUILDING
@@ -80,6 +79,43 @@ public:
 class Archive {
 public: // Declarations
 
+  enum class LogLevel {
+    Debug,
+    Info,
+    Warning,
+    Error
+  };
+
+  enum class ProgressType {
+    
+    // Indicates the progression in the archive. This may reach 100% way before the
+    // extraction is complete.
+    ARCHIVE,
+
+    // Progress about extraction. If this reach 100%, it means that the extraction of
+    // all files is complete.
+    EXTRACTION
+  };
+
+  enum class FileChangeType {
+    EXTRACTION_START,
+    EXTRACTION_END
+  };
+
+  static constexpr int MAX_PASSWORD_LENGTH = 256;
+
+  /**
+   * List of callbacks:
+   */
+  using LogCallback = std::function<void(LogLevel, std::wstring const& log)>;
+  using ProgressCallback = std::function<void(ProgressType, uint64_t, uint64_t)>;
+  using PasswordCallback = std::function<std::wstring()>;
+  using FileChangeCallback = std::function<void(FileChangeType, std::wstring const&)>;
+  using ErrorCallback = std::function<void(std::wstring const&)>;
+
+  /**
+   *
+   */
   enum class Error {
     ERROR_NONE,
     ERROR_EXTRACT_CANCELLED,
@@ -129,7 +165,7 @@ public:
    *
    * @param logCallback The new callback to use for logging message.
    */
-  virtual void setLogCallback(ArchiveCallbacks::LogCallback logCallback) = 0;
+  virtual void setLogCallback(LogCallback logCallback) = 0;
 
   /**
    * @brief Open the given archive.
@@ -141,7 +177,7 @@ public:
    *
    * @return true if the archive was open properly, false otherwise.
    */
-  virtual bool open(std::wstring const &archivePath, ArchiveCallbacks::PasswordCallback passwordCallback) = 0;
+  virtual bool open(std::wstring const &archivePath, PasswordCallback passwordCallback) = 0;
 
   /**
    * @brief Close the currently opened archive.
@@ -156,25 +192,53 @@ public:
   /**
    * @brief Extract the content of the archive.
    *
-   * This function uses the filenames from FileData to obtain the extraction paths of file.
+   * This function uses the filenames from FileData to obtain the extraction paths of file. All
+   * the callbacks are optional (you can specify default-constructed std::function). Overloads with
+   * one or two callbacks are also provided.
    *
    * @param outputDirectory Path to the directory where the archive should be extracted. If not empty,
    *   conflicting files will be replaced by the extracted ones.
-   * @param progressCallback Function called to notify extraction progress. This function is called
-   *   when new data is written to the disk, not when the archive is read, so it may take a little
-   *   time to start.
+   * @param progressCallback Function called to notify extraction progress.
    * @param fileChangeCallback Function called when the file currently being extracted changes.
    * @param errorCallback Function called when an error occurs.
    *
    * @return true if the archive was extracted, false otherwise.
    */
-  virtual bool extract(std::wstring const &outputDirectory, ArchiveCallbacks::ProgressCallback progressCallback,
-    ArchiveCallbacks::FileChangeCallback fileChangeCallback, ArchiveCallbacks::ErrorCallback errorCallback) = 0;
+  virtual bool extract(std::wstring const &outputDirectory, 
+    ProgressCallback progressCallback,
+    FileChangeCallback fileChangeCallback, 
+    ErrorCallback errorCallback) = 0;
 
   /**
    * @brief Cancel the current extraction process.
    */
   virtual void cancel() = 0;
+
+  // A bunch of useful overloads (with one or two callbacks):
+  bool extract(std::wstring const& outputDirectory, 
+    ErrorCallback errorCallback) {
+    return extract(outputDirectory, {}, {}, errorCallback);
+  }
+  bool extract(std::wstring const& outputDirectory,
+    ProgressCallback progressCallback) {
+    return extract(outputDirectory, progressCallback, {}, {});
+  }
+  bool extract(std::wstring const& outputDirectory,
+    FileChangeCallback fileChangeCallback) {
+    return extract(outputDirectory, {}, fileChangeCallback, {});
+  }
+  bool extract(std::wstring const& outputDirectory, 
+    ProgressCallback progressCallback, ErrorCallback errorCallback) {
+    return extract(outputDirectory, progressCallback, {}, errorCallback);
+  }
+  bool extract(std::wstring const& outputDirectory,
+    ProgressCallback progressCallback, FileChangeCallback fileChangeCallback) {
+    return extract(outputDirectory, progressCallback, fileChangeCallback, {});
+  }
+  bool extract(std::wstring const& outputDirectory,
+    FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) {
+    return extract(outputDirectory, {}, fileChangeCallback, errorCallback);
+  }
 
 private:
 

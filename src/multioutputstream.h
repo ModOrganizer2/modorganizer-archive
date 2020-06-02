@@ -1,17 +1,14 @@
 #ifndef MULTIOUTPUTSTREAM_H
 #define MULTIOUTPUTSTREAM_H
 
-
-
-#include "7zip/IStream.h"
-
 #include <filesystem>
 #include <functional>
 #include <memory>
 #include <vector>
 
+#include "7zip/IStream.h"
+
 #include "unknown_impl.h"
-#include "callback.h"
 #include "fileio.h"
 
 /** This class allows you to open and output to multiple file handles at a time.
