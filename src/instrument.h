@@ -7,6 +7,12 @@
 
 namespace ArchiveTimers {
 
+/**
+ * If INSTRUMENT_ARCHIVE is not defined, we define a Timer() class that is empty and
+ * does nothing, and thus should be optimized out by the compiler.
+ */
+#ifdef INSTRUMENT_ARCHIVE
+
   /**
    * Small class that can be used to instrument portion of code using a guard.
    *
@@ -66,6 +72,15 @@ namespace ArchiveTimers {
     clock_t::duration time{ 0 };
 
   };
+
+#else
+
+  struct Timer {
+    // This is the only method needed:
+    Timer& instrument() { return *this; }
+  };
+
+#endif
 
 }
 

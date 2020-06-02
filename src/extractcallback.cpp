@@ -110,11 +110,13 @@ CArchiveExtractCallback::CArchiveExtractCallback(ProgressCallback progressCallba
 
 CArchiveExtractCallback::~CArchiveExtractCallback()
 {
+#ifdef INSTRUMENT_ARCHIVE
   m_LogCallback(LogLevel::Debug, m_Timers.GetStream.toString(L"GetStream"));
   m_LogCallback(LogLevel::Debug, m_Timers.SetOperationResult.SetMTime.toString(L"SetOperationResult.SetMTime"));
   m_LogCallback(LogLevel::Debug, m_Timers.SetOperationResult.Close.toString(L"SetOperationResult.Close"));
   m_LogCallback(LogLevel::Debug, m_Timers.SetOperationResult.Release.toString(L"SetOperationResult.Release"));
   m_LogCallback(LogLevel::Debug, m_Timers.SetOperationResult.SetFileAttributesW.toString(L"SetOperationResult.SetFileAttributesW"));
+#endif
 }
 
 STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)
