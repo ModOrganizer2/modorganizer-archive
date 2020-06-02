@@ -146,7 +146,7 @@ namespace IO {
    * @brief Convert the given wide-string to a path object, after adding (if not already present)
    *   the Windows long-path prefix.
    *
-   * @param path The string containing the absolute path.
+   * @param path The string containing the path.
    * @param exists true if the path should exists, false otherwize.
    *
    * @return the created path.
