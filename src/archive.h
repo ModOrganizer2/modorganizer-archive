@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #define ARCHIVE_H
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
 #include "callback.h"
@@ -181,9 +182,12 @@ private:
 
 };
 
-
-/// factory function for archive-objects
-extern "C" DLLEXPORT Archive* CreateArchive();
+/**
+ * @brief Factory function for archive-objects.
+ *
+ * @return a pointer to a new Archive object that can be used to manipulate archives.
+ */
+DLLEXPORT std::unique_ptr<Archive> CreateArchive();
 
 
 #endif // ARCHIVE_H

@@ -586,7 +586,7 @@ void ArchiveImpl::cancel()
 }
 
 
-extern "C" Archive *CreateArchive()
+std::unique_ptr<Archive> CreateArchive()
 {
-  return new ArchiveImpl;
+  return std::make_unique<ArchiveImpl>();
 }
