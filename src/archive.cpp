@@ -1,7 +1,7 @@
 /*
 Mod Organizer archive handling
 
-Copyright (C) 2012 Sebastian Herbord. All rights reserved.
+Copyright (C) 2012 Sebastian Herbord, 2020 MO2 Team. All rights reserved.
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
