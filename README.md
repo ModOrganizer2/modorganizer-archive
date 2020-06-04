@@ -115,8 +115,8 @@ bool extract(std::wstring const &outputDirectory, ArchiveCallbacks::ProgressCall
 
 All callbacks are optional, you can pass an empty `std::function` instead (either `nullptr` or `{}`). The purpose of the callbacks:
 
-- `progressCallback(float)` is called during extraction to notify progress. _Note to self: update._
-- `fileChangeCallback(std::wstring const&)` is called when a file starts being extracted. _Note to self: update._
+- `progressCallback(float)` is called during extraction to notify progress.
+- `fileChangeCallback(std::wstring const&)` is called when a file starts being extracted.
 - `errorCallback(std::wstring const&)` is called if an error occurred, with an appropriate error message. There is not much you can do
     here beyond displaying the message. This will also result in a failure return from `extract`.
 
