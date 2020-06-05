@@ -87,12 +87,17 @@ public: // Declarations
 
   enum class ProgressType {
     
-    // Indicates the progression in the archive. This may reach 100% way before the
-    // extraction is complete.
+    // Indicates the 7z progression in the archive (related to reading the archive. When extracting 
+    // a lot of files, this may reach 100% way before the extraction is complete since most of the 
+    // time will be spend writing data and not reading it (use EXTRACTION in this case). When 
+    // extracting few small files,  this may be useful for solid archives since most of the time 
+    // will be spent in reading and decompressing the archive rather than in writing the actual files.
     ARCHIVE,
 
-    // Progress about extraction. If this reach 100%, it means that the extraction of
-    // all files is complete.
+    // Progress about extraction. If this reach 100%, it means that the extraction of all files is 
+    // complete. The EXTRACTION progress may not start immediately, and might be kind of chaotic when
+    // extracting few files from an archive, but is much more representative of the actual progress 
+    // than ARCHIVE.
     EXTRACTION
   };
 
