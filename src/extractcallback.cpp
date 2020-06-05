@@ -170,7 +170,8 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     return S_OK;
   }
 
-  std::vector<std::wstring> filenames = m_FileData[index]->getAndClearOutputFileNames();
+  std::vector<std::wstring> filenames = m_FileData[index]->getOutputFilePaths();
+  m_FileData[index]->clearOutputFilePaths();
   if (filenames.empty()) {
     return S_OK;
   }

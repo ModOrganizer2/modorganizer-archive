@@ -38,9 +38,10 @@ class FileData {
 public:
 
   /**
-   * @return the full filepath to this entry.
+   * @return the path of this entry in the archive (usually relative, unless the archive
+   *   contains absolute path).
    */
-  virtual std::wstring getFileName() const = 0;
+  virtual std::wstring getArchiveFilePath() const = 0;
 
   /**
    * @return the size of this entry in bytes (uncompressed).
@@ -48,20 +49,25 @@ public:
   virtual uint64_t getSize() const = 0;
 
   /**
-   * @brief Add the given filename to the list of files to create from this
+   * @brief Add the given filepath to the list of files to create from this
    *   entry when extracting.
    *
-   * @param filepath The filename to add.
+   * @param filepath The filepath to add, relative to the output folder.
    */
-  virtual void addOutputFileName(std::wstring const& filepath) = 0;
+  virtual void addOutputFilePath(std::wstring const& filepath) = 0;
   
   /**
-   * @brief Retrieve the list of filepaths to extract this entry to and clear the
-   *   internal list.
+   * @brief Retrieve the list of filepaths to extract this entry to.
    *
-   * @return the list of paths this entry should be extracted to.
+   * @return the list of paths this entry should be extracted to, relative to the
+   *   output folder.
    */
-  virtual std::vector<std::wstring> getAndClearOutputFileNames() = 0;
+  virtual const std::vector<std::wstring>& getOutputFilePaths() const = 0;
+
+  /**
+   * @brief Clear the list of output file paths for this entry.
+   */
+  virtual void clearOutputFilePaths() = 0;
   
   /**
    * @return the CRC of this file.

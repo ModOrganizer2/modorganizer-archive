@@ -43,19 +43,21 @@ public:
   FileDataImpl(std::wstring const& fileName, UInt64 size, UInt64 crc, bool isDirectory)
     : m_FileName(fileName), m_Size(size), m_CRC(crc), m_IsDirectory(isDirectory) { }
 
-  virtual std::wstring getFileName() const override { return m_FileName; }
+  virtual std::wstring getArchiveFilePath() const override { return m_FileName; }
   virtual uint64_t getSize() const override { return m_Size; }
 
-  virtual void addOutputFileName(std::wstring const &fileName) override {
-    m_OutputFileNames.push_back(fileName);
+  virtual void addOutputFilePath(std::wstring const &fileName) override {
+    m_OutputFilePaths.push_back(fileName);
   }
-  virtual std::vector<std::wstring> getAndClearOutputFileNames() override {
-    std::vector<std::wstring> result;
-    std::swap(m_OutputFileNames, result);
-    return result;
+  virtual const std::vector<std::wstring>& getOutputFilePaths() const override {
+    return m_OutputFilePaths;
   }
 
-  bool isEmpty() const { return m_OutputFileNames.empty(); }
+  virtual void clearOutputFilePaths() override {
+    m_OutputFilePaths.clear();
+  }
+
+  bool isEmpty() const { return m_OutputFilePaths.empty(); }
   virtual bool isDirectory() const override { return m_IsDirectory; }
   virtual uint64_t getCRC() const override { return m_CRC; }
 
@@ -63,7 +65,7 @@ private:
   std::wstring m_FileName;
   UInt64 m_Size;
   UInt64 m_CRC;
-  std::vector<std::wstring> m_OutputFileNames;
+  std::vector<std::wstring> m_OutputFilePaths;
   bool m_IsDirectory;
 };
 
