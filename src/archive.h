@@ -132,13 +132,6 @@ public: // Special member functions:
 
   virtual ~Archive() {}
 
-  void operator delete(void* ptr) {
-    if (ptr != nullptr) {
-      Archive* object = static_cast<Archive*>(ptr);
-      object->destroy();
-    }
-  }
-
 public:
 
   /**
@@ -238,10 +231,6 @@ public:
     FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) {
     return extract(outputDirectory, {}, fileChangeCallback, errorCallback);
   }
-
-private:
-
-  virtual void destroy() = 0;
 
 };
 

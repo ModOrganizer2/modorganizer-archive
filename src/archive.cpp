@@ -96,15 +96,7 @@ public:
 
   virtual void cancel() override;
 
-  void operator delete(void* ptr) {
-    ::operator delete(ptr);
-  }
-
 private:
-
-  virtual void destroy() {
-    delete this;
-  }
 
   void clearFileList();
   void resetFileList();
