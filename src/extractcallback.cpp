@@ -146,13 +146,20 @@ template <typename T> bool CArchiveExtractCallback::getOptionalProperty(UInt32 i
   return true;
 }
 
-template <typename T> T CArchiveExtractCallback::getProperty(UInt32 index, int property) const
+template <typename T> bool CArchiveExtractCallback::getProperty(UInt32 index, int property, T *result) const
 {
   PropertyVariant prop;
   if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
-    throw std::runtime_error("Error getting property");
+    m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Error getting property {}.", property));
+    return false;
   }
-  return static_cast<T>(prop);
+  if (prop.is_empty()) {
+    m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Error getting property {}.", property));
+    return false;
+
+  }
+  *result = static_cast<T>(prop);
+  return true;
 }
 
 STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStream **outStream, Int32 askExtractMode)
@@ -180,7 +187,9 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
   {
     m_ProcessedFileInfo.AttribDefined = getOptionalProperty(index, kpidAttrib, &m_ProcessedFileInfo.Attrib);
 
-    m_ProcessedFileInfo.isDir = getProperty<bool>(index, kpidIsDir);
+    if (!getProperty(index, kpidIsDir, &m_ProcessedFileInfo.isDir)) {
+      return E_ABORT;
+    }
 
     //Why do we do this? And if we are doing this, shouldn't we copy the created
     //and accessed times (kpidATime, kpidCTime) as well?

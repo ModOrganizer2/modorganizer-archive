@@ -86,7 +86,7 @@ private:
   }
 
   template <typename T> bool getOptionalProperty(UInt32 index, int property, T *result) const;
-  template <typename T> T getProperty(UInt32 index, int property) const;
+  template <typename T> bool getProperty(UInt32 index, int property, T *result) const;
 
 private:
 
