@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef EXTRACTCALLBACK_H
 #define EXTRACTCALLBACK_H
 
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 
@@ -95,7 +96,7 @@ private:
 
   std::filesystem::path m_DirectoryPath;
   bool m_Extracting;
-  bool m_Canceled;
+  std::atomic<bool> m_Canceled;
 
 
   struct {
