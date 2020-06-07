@@ -1,15 +1,35 @@
+/*
+Mod Organizer archive handling
+
+Copyright (C) 2012 Sebastian Herbord, 2020 MO2 Team. All rights reserved.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #ifndef MULTIOUTPUTSTREAM_H
 #define MULTIOUTPUTSTREAM_H
 
-#include "unknown_impl.h"
+#include <filesystem>
+#include <functional>
+#include <memory>
+#include <vector>
 
 #include "7zip/IStream.h"
 
-class QFile;
-class QString;
-
-#include <memory>
-#include <vector>
+#include "unknown_impl.h"
+#include "fileio.h"
 
 /** This class allows you to open and output to multiple file handles at a time.
  * It implements the ISequentalOutputStream interface and has some extra functions
@@ -18,14 +38,20 @@ class QString;
  *
  * Note that the handling on errors could be better.
  */
-class MultiOutputStream :
-    public ISequentialOutStream
+class MultiOutputStream : 
+  public IOutStream
 {
 
-  UNKNOWN_1_INTERFACE(ISequentialOutStream);
+  UNKNOWN_1_INTERFACE(IOutStream);
 
 public:
-  MultiOutputStream();
+
+  // Callback for write. Args are: 1) number of bytes that have been
+  // written for this call, 2) number of bytes that have been written
+  // in total.
+  using WriteCallback = std::function<void(UInt32, UInt64)>;
+
+  MultiOutputStream(WriteCallback callback = {});
 
   virtual ~MultiOutputStream();
 
@@ -33,7 +59,7 @@ public:
    *
    * @returns true if all went OK, false if any file failed to open
    */
-  bool Open(std::vector<QString> const &fileNames);
+  bool Open(std::vector<std::filesystem::path> const &fileNames);
 
   /** Closes all the files opened by the last open
    *
@@ -57,9 +83,16 @@ public:
    * @warn If an error happens, the code will not attempt any further writing,
    * so some files might not get written to at all
    */
-  STDMETHOD(Write)(const void *data, UInt32 size, UInt32 *processedSize);
+  STDMETHOD(Write)(const void *data, UInt32 size, UInt32 *processedSize) override;
+
+  STDMETHOD(Seek)(Int64 offset, UInt32 seekOrigin, UInt64* newPosition) override;
+  STDMETHOD(SetSize)(UInt64 newSize) override;
+  HRESULT GetSize(UInt64* size);
 
 private:
+
+  WriteCallback m_WriteCallback;
+
   /** This is the amount of data written to *any one* file.
    *
    * If there are errors writing to one of the files, this might or might
@@ -67,12 +100,10 @@ private:
    */
   UInt64 m_ProcessedSize;
 
-  typedef std::unique_ptr<QFile> OutFile;
-
   /** All the files opened for this 'stream'
    *
    */
-  std::vector<OutFile> m_Handles;
+  std::vector<IO::FileOut> m_Files;
 
 };
 

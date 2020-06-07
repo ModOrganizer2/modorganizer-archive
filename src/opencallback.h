@@ -1,7 +1,7 @@
 /*
 Mod Organizer archive handling
 
-Copyright (C) 2012 Sebastian Herbord. All rights reserved.
+Copyright (C) 2012 Sebastian Herbord, 2020 MO2 Team. All rights reserved.
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -18,20 +18,19 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-
 #ifndef OPENCALLBACK_H
 #define OPENCALLBACK_H
 
-#include "callback.h"
-#include "unknown_impl.h"
+#include <filesystem>
+#include <string>
 
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 
-#include <QDir>
-#include <QFileInfo>
+#include "archive.h"
+#include "fileio.h"
+#include "unknown_impl.h"
 
-#include <string>
 
 class CArchiveOpenCallback: public IArchiveOpenCallback,
                             public IArchiveOpenVolumeCallback,
@@ -46,11 +45,11 @@ class CArchiveOpenCallback: public IArchiveOpenCallback,
 
 public:
 
-  CArchiveOpenCallback(PasswordCallback* passwordCallback, QFileInfo const &fileinfo);
+  CArchiveOpenCallback(Archive::PasswordCallback passwordCallback, Archive::LogCallback logCallback, std::filesystem::path const &filepath);
 
   ~CArchiveOpenCallback() { }
 
-  QString GetPassword() const { return m_Password; }
+  const std::wstring& GetPassword() const { return m_Password; }
 
   INTERFACE_IArchiveOpenCallback(;)
   INTERFACE_IArchiveOpenVolumeCallback(;)
@@ -64,11 +63,12 @@ public:
 
 private:
 
-  PasswordCallback *m_PasswordCallback;
-  QString m_Password;
+  Archive::PasswordCallback m_PasswordCallback;
+  Archive::LogCallback m_LogCallback;
+  std::wstring m_Password;
 
-  QDir m_Path;
-  QFileInfo m_FileInfo;
+  std::filesystem::path m_Path;
+  IO::FileInfo m_FileInfo;
 
   bool m_SubArchiveMode;
   std::wstring m_SubArchiveName;

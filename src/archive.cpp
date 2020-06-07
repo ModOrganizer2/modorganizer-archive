@@ -1,7 +1,7 @@
 /*
 Mod Organizer archive handling
 
-Copyright (C) 2012 Sebastian Herbord. All rights reserved.
+Copyright (C) 2012 Sebastian Herbord, 2020 MO2 Team. All rights reserved.
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -25,10 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "inputstream.h"
 #include "opencallback.h"
 #include "propertyvariant.h"
-
-#include <QDebug>
-#include <QDir>
-#include <QLibrary>
+#include "library.h"
 
 #include <algorithm>
 #include <map>
@@ -43,55 +40,42 @@ namespace PropID = NArchive::NHandlerPropID;
 class FileDataImpl : public FileData {
   friend class Archive;
 public:
-  FileDataImpl(const QString &fileName, UInt64 crc, bool isDirectory);
+  FileDataImpl(std::wstring const& fileName, UInt64 size, UInt64 crc, bool isDirectory)
+    : m_FileName(fileName), m_Size(size), m_CRC(crc), m_IsDirectory(isDirectory) { }
 
-  virtual QString getFileName() const;
-  virtual void addOutputFileName(QString const &fileName);
-  virtual std::vector<QString> getAndClearOutputFileNames();
-  bool isEmpty() const { return m_OutputFileNames.empty(); }
-  virtual bool isDirectory() const { return m_IsDirectory; }
-  virtual uint64_t getCRC() const;
+  virtual std::wstring getArchiveFilePath() const override { return m_FileName; }
+  virtual uint64_t getSize() const override { return m_Size; }
+
+  virtual void addOutputFilePath(std::wstring const &fileName) override {
+    m_OutputFilePaths.push_back(fileName);
+  }
+  virtual const std::vector<std::wstring>& getOutputFilePaths() const override {
+    return m_OutputFilePaths;
+  }
+
+  virtual void clearOutputFilePaths() override {
+    m_OutputFilePaths.clear();
+  }
+
+  bool isEmpty() const { return m_OutputFilePaths.empty(); }
+  virtual bool isDirectory() const override { return m_IsDirectory; }
+  virtual uint64_t getCRC() const override { return m_CRC; }
 
 private:
-  QString m_FileName;
+  std::wstring m_FileName;
+  UInt64 m_Size;
   UInt64 m_CRC;
-  std::vector<QString> m_OutputFileNames;
+  std::vector<std::wstring> m_OutputFilePaths;
   bool m_IsDirectory;
 };
 
 
-QString FileDataImpl::getFileName() const
-{
-  return m_FileName;
-}
-
-void FileDataImpl::addOutputFileName(const QString &fileName)
-{
-  m_OutputFileNames.push_back(fileName);
-}
-
-std::vector<QString> FileDataImpl::getAndClearOutputFileNames()
-{
-  std::vector<QString> result = m_OutputFileNames;
-  m_OutputFileNames.clear();
-  return result;
-}
-
-uint64_t FileDataImpl::getCRC() const {
-  return m_CRC;
-}
-
-
-FileDataImpl::FileDataImpl(const QString &fileName, UInt64 crc, bool isDirectory)
-  : m_FileName(fileName)
-  , m_CRC(crc)
-  , m_IsDirectory(isDirectory)
-{
-}
-
-
 /// represents the connection to one archive and provides common functionality
 class ArchiveImpl : public Archive {
+
+  // Callback that does nothing but avoid having to check if the callback is present
+  // everytime.
+  static LogCallback DefaultLogCallback;
 
 public:
 
@@ -101,24 +85,20 @@ public:
   virtual bool isValid() const { return m_Valid; }
 
   virtual Error getLastError() const { return m_LastError; }
-
-  virtual bool open(const QString &archiveName, PasswordCallback *passwordCallback);
-  virtual void close();
-  virtual bool getFileList(FileData* const *&data, size_t &size);
-  virtual bool extract(QString const &outputDirectory, ProgressCallback *progressCallback,
-                       FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback);
-
-  virtual void cancel();
-
-  void operator delete(void* ptr) {
-    ::operator delete(ptr);
+  virtual void setLogCallback(LogCallback logCallback) override { 
+    // Wrap the callback so that we do not have to check if it is set everywhere:
+    m_LogCallback = logCallback ? logCallback : DefaultLogCallback;
   }
+
+  virtual bool open(std::wstring const &archiveName, PasswordCallback passwordCallback) override;
+  virtual void close() override;
+  const std::vector<FileData*>& getFileList() const override { return m_FileList; }
+  virtual bool extract(std::wstring const& outputDirectory, ProgressCallback progressCallback,
+                       FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) override;
+
+  virtual void cancel() override;
 
 private:
-
-  virtual void destroy() {
-    delete this;
-  }
 
   void clearFileList();
   void resetFileList();
@@ -142,16 +122,17 @@ private:
   bool m_Valid;
   Error m_LastError;
 
-  QLibrary m_Library;
-  QString m_ArchiveName; //TBH I don't think this is required
+  ALibrary  m_Library;
+  std::wstring m_ArchiveName; //TBH I don't think this is required
   CComPtr<IInArchive> m_ArchivePtr;
   CArchiveExtractCallback *m_ExtractCallback;
 
-  PasswordCallback *m_PasswordCallback;
+  LogCallback m_LogCallback;
+  PasswordCallback m_PasswordCallback;
 
   std::vector<FileData*> m_FileList;
 
-  QString m_Password;
+  std::wstring m_Password;
 
   struct ArchiveFormatInfo
   {
@@ -176,6 +157,8 @@ private:
   std::size_t m_MaxSignatureLen = 0;
 };
 
+Archive::LogCallback ArchiveImpl::DefaultLogCallback([](LogLevel, std::wstring const&) {});
+
 template <typename T> T ArchiveImpl::readHandlerProperty(UInt32 index, PROPID propID) const
 {
   PropertyVariant prop;
@@ -199,7 +182,7 @@ template <typename T> T ArchiveImpl::readProperty(UInt32 index, PROPID propID) c
 HRESULT ArchiveImpl::loadFormats()
 {
   typedef UInt32 (WINAPI *GetNumberOfFormatsFunc)(UInt32 *numFormats);
-  GetNumberOfFormatsFunc getNumberOfFormats = reinterpret_cast<GetNumberOfFormatsFunc>(m_Library.resolve("GetNumberOfFormats"));
+  GetNumberOfFormatsFunc getNumberOfFormats = m_Library.resolve<GetNumberOfFormatsFunc>("GetNumberOfFormats");
   if (getNumberOfFormats == nullptr) {
     return E_FAIL;
   }
@@ -275,30 +258,33 @@ HRESULT ArchiveImpl::loadFormats()
 
 ArchiveImpl::ArchiveImpl()
   : m_Valid(false)
-  , m_LastError(ERROR_NONE)
+  , m_LastError(Error::ERROR_NONE)
   , m_Library("dlls/7z")
-  , m_PasswordCallback(nullptr)
+  , m_PasswordCallback{}
 {
-  if (!m_Library.load()) {
-    m_LastError = ERROR_LIBRARY_NOT_FOUND;
+  // Reset the log callback:
+  setLogCallback({});
+
+  if (!m_Library) {
+    m_LastError = Error::ERROR_LIBRARY_NOT_FOUND;
     return;
   }
 
-  m_CreateObjectFunc = reinterpret_cast<CreateObjectFunc>(m_Library.resolve("CreateObject"));
+  m_CreateObjectFunc = m_Library.resolve< CreateObjectFunc>("CreateObject");
   if (m_CreateObjectFunc == nullptr) {
-    m_LastError = ERROR_LIBRARY_INVALID;
+    m_LastError = Error::ERROR_LIBRARY_INVALID;
     return;
   }
 
-  m_GetHandlerPropertyFunc = reinterpret_cast<GetPropertyFunc>(m_Library.resolve("GetHandlerProperty2"));
+  m_GetHandlerPropertyFunc = m_Library.resolve< GetPropertyFunc>("GetHandlerProperty2");
   if (m_GetHandlerPropertyFunc == nullptr) {
-    m_LastError = ERROR_LIBRARY_INVALID;
+    m_LastError = Error::ERROR_LIBRARY_INVALID;
     return;
   }
 
   try {
     if (loadFormats() != S_OK) {
-      m_LastError = ERROR_LIBRARY_INVALID;
+      m_LastError = Error::ERROR_LIBRARY_INVALID;
       return;
     }
 
@@ -306,8 +292,8 @@ ArchiveImpl::ArchiveImpl()
     return;
   }
   catch (std::exception const &e) {
-    qDebug() << "Caught exception " << e.what();
-    m_LastError = ERROR_LIBRARY_INVALID;
+    m_LogCallback(LogLevel::Error, fmt::format(L"Caught exception {}.", e));
+    m_LastError = Error::ERROR_LIBRARY_INVALID;
   }
 }
 
@@ -316,19 +302,18 @@ ArchiveImpl::~ArchiveImpl()
   close();
 }
 
-bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCallback)
+bool ArchiveImpl::open(std::wstring const& archiveName, PasswordCallback passwordCallback)
 {
   m_ArchiveName = archiveName; //Just for debugging, not actually used...
-
+  
   Formats formatList = m_Formats;
 
-  //I sincerely hope QFileInfo works with v. long. paths (although 7z original
-  //doesn't either...)
-  QFileInfo finfo(archiveName);
+  // Convert to long path if it's not already:
+  std::filesystem::path filepath = IO::make_path(archiveName);
 
-  //If it doesn't exist or is a directory, error
-  if (!finfo.exists() || finfo.isDir()) {
-    m_LastError = ERROR_ARCHIVE_NOT_FOUND;
+  // If it doesn't exist or is a directory, error
+  if (!exists(filepath) || is_directory(filepath)) {
+    m_LastError = Error::ERROR_ARCHIVE_NOT_FOUND;
     return false;
   }
 
@@ -338,12 +323,19 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
 
   CComPtr<InputStream> file(new InputStream);
 
-  if (!file->Open(finfo.absoluteFilePath())) {
-    m_LastError = ERROR_FAILED_TO_OPEN_ARCHIVE;
+  if (!file->Open(filepath)) {
+    m_LastError = Error::ERROR_FAILED_TO_OPEN_ARCHIVE;
     return false;
   }
 
-  CComPtr<CArchiveOpenCallback> openCallbackPtr(new CArchiveOpenCallback(passwordCallback, finfo));
+  CComPtr<CArchiveOpenCallback> openCallbackPtr;
+  try {
+    openCallbackPtr = new CArchiveOpenCallback(passwordCallback, m_LogCallback, filepath);
+  }
+  catch (std::runtime_error const& ex) {
+    m_LastError = Error::ERROR_FAILED_TO_OPEN_ARCHIVE;
+    return false;
+  }
 
   // Try to open the archive
 
@@ -362,20 +354,21 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
       std::string signature = std::string(buff.data(), act);
       if (signatureInfo.first == std::string(buff.data(), signatureInfo.first.size())) {
         if (m_CreateObjectFunc(&signatureInfo.second.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
-          m_LastError = ERROR_LIBRARY_ERROR;
+          m_LastError = Error::ERROR_LIBRARY_ERROR;
           return false;
         }
 
         if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
-          qDebug() << "Failed to open " << archiveName << " using " <<
-            QString::fromStdWString(signatureInfo.second.m_Name) << " (from signature)";
+          m_LogCallback(LogLevel::Debug, fmt::format(L"Failed to open {} using {} (from signature).",
+            archiveName, signatureInfo.second.m_Name));
           m_ArchivePtr.Release();
         }
         else {
-          qDebug() << "Opened " << archiveName << " using " <<
-            QString::fromStdWString(signatureInfo.second.m_Name) << " (from signature)";
-          QString extension = finfo.suffix().toLower();
-          std::wstring ext(extension.toStdWString());
+          m_LogCallback(LogLevel::Debug, fmt::format(L"Opened {} using {} (from signature).",
+            archiveName, signatureInfo.second.m_Name));
+
+          // Retrieve the extension (warning: .extension() contains the dot):
+          std::wstring ext = ArchiveStrings::towlower(filepath.extension().native().substr(1));
           std::wistringstream s(signatureInfo.second.m_Extensions);
           std::wstring t;
           bool found = false;
@@ -386,7 +379,7 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
             }
           }
           if (!found) {
-            qWarning() << "WARNING: The extension of this file did not match the expected extensions for this format! You may want to inform the mod author.";
+            m_LogCallback(LogLevel::Warning, L"The extension of this file did not match the expected extensions for this format.");
             sigMismatch = true;
           }
         }
@@ -404,8 +397,7 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
   {
     // determine archive type based on extension
     Formats const *formats = nullptr;
-    QString extension = finfo.suffix().toLower();
-    std::wstring ext(extension.toStdWString());
+    std::wstring ext = ArchiveStrings::towlower(filepath.extension().native().substr(1));
     FormatMap::const_iterator map_iter = m_FormatMap.find(ext);
     if (map_iter != m_FormatMap.end()) {
       formats = &map_iter->second;
@@ -415,18 +407,18 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
           //there are multiple formats, we'll try by signature lookup first.
           for (ArchiveFormatInfo format : *formats) {
             if (m_CreateObjectFunc(&format.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
-              m_LastError = ERROR_LIBRARY_ERROR;
+              m_LastError = Error::ERROR_LIBRARY_ERROR;
               return false;
             }
 
             if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
-              qDebug() << "Failed to open " << archiveName << " using " <<
-                QString::fromStdWString(format.m_Name) << " (from extension)";
+              m_LogCallback(LogLevel::Debug, fmt::format(L"Failed to open {} using {} (from signature).",
+                archiveName, format.m_Name));
               m_ArchivePtr.Release();
             }
             else {
-              qDebug() << "Opened " << archiveName << " using " <<
-                QString::fromStdWString(format.m_Name) << " (from extension)";
+              m_LogCallback(LogLevel::Debug, fmt::format(L"Opened {} using {} (from signature).",
+                archiveName, format.m_Name));
               break;
             }
 
@@ -435,27 +427,28 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
               formatList.erase(iter);
           }
         } else if (sigMismatch) {
-          QStringList formatList;
-          for (ArchiveFormatInfo format : *formats)
-            formatList.append(QString::fromStdWString(format.m_Name));
-          qWarning() << "WARNING: The format(s) expected for this extension are: " << formatList.join(", ");
+          std::vector<std::wstring> vformats;
+          for (ArchiveFormatInfo format : *formats) {
+            vformats.push_back(format.m_Name);
+          }
+          m_LogCallback(LogLevel::Warning, fmt::format(L"The format(s) expected for this extension are: {}.", ArchiveStrings::join(vformats, L", ")));
         }
       }
     }
   }
 
   if (m_ArchivePtr == nullptr) {
-    qWarning() << "WARNING: We're trying to open an archive but could not recognize the extension or signature.";
-    qDebug() << "Attempting to open the file with the remaining formats as a fallback...";
+    m_LogCallback(LogLevel::Warning, L"Trying to open an archive but could not recognize the extension or signature.");
+    m_LogCallback(LogLevel::Debug, L"Attempting to open the file with the remaining formats as a fallback...");
     for (auto format : formatList) {
       if (m_CreateObjectFunc(&format.m_ClassID, &IID_IInArchive, (void**)&m_ArchivePtr) != S_OK) {
-        m_LastError = ERROR_LIBRARY_ERROR;
+        m_LastError = Error::ERROR_LIBRARY_ERROR;
         return false;
       }
       if (m_ArchivePtr->Open(file, 0, openCallbackPtr) == S_OK) {
-        qDebug() << "Opened " << archiveName << " using " <<
-          QString::fromStdWString(format.m_Name) << " (scan fallback)";
-        qWarning() << "NOTE: This archive likely has an incorrect extension. Please contact the mod author.";
+        m_LogCallback(LogLevel::Debug, fmt::format(L"Opened {} using {} (from signature).",
+          archiveName, format.m_Name));
+        m_LogCallback(LogLevel::Warning, L"This archive likely has an incorrect extension.");
         break;
       } else
         m_ArchivePtr.Release();
@@ -463,7 +456,7 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
   }
 
   if (m_ArchivePtr == nullptr) {
-    m_LastError = ERROR_INVALID_ARCHIVE_FORMAT;
+    m_LastError = Error::ERROR_INVALID_ARCHIVE_FORMAT;
     return false;
   }
 
@@ -491,7 +484,7 @@ bool ArchiveImpl::open(QString const &archiveName, PasswordCallback *passwordCal
     }
   }*/
 
-  m_LastError = ERROR_NONE;
+  m_LastError = Error::ERROR_NONE;
 
   resetFileList();
   return true;
@@ -505,8 +498,7 @@ void ArchiveImpl::close()
   }
   clearFileList();
   m_ArchivePtr.Release();
-  delete m_PasswordCallback;
-  m_PasswordCallback = nullptr;
+  m_PasswordCallback = {};
 }
 
 
@@ -526,30 +518,25 @@ void ArchiveImpl::resetFileList()
   m_ArchivePtr->GetNumberOfItems(&numItems);
 
   for (UInt32 i = 0; i < numItems; ++i) {
-    m_FileList.push_back(new FileDataImpl(readProperty<QString>(i, kpidPath),
+    m_FileList.push_back(new FileDataImpl(readProperty<std::wstring>(i, kpidPath),
+                                          readProperty<UInt64>(i, kpidSize),
                                           readProperty<UInt64>(i, kpidCRC),
                                           readProperty<bool>(i, kpidIsDir)));
   }
 }
 
-
-bool ArchiveImpl::getFileList(FileData* const *&data, size_t &size)
-{
-  data = &m_FileList[0];
-  size = m_FileList.size();
-  return true;
-}
-
-
-bool ArchiveImpl::extract(const QString &outputDirectory, ProgressCallback* progressCallback,
-                          FileChangeCallback* fileChangeCallback, ErrorCallback* errorCallback)
+bool ArchiveImpl::extract(std::wstring const& outputDirectory, ProgressCallback progressCallback,
+                          FileChangeCallback fileChangeCallback, ErrorCallback errorCallback)
 
 {
   // Retrieve the list of indices we want to extract:
   std::vector<UInt32> indices;
+  UInt64 totalSize = 0;
   for (std::size_t i = 0; i < m_FileList.size(); ++i) {
-    if (!static_cast<FileDataImpl*>(m_FileList[i])->isEmpty()) {
+    FileDataImpl* fileData = static_cast<FileDataImpl*>(m_FileList[i]);
+    if (!fileData->isEmpty()) {
       indices.push_back(i);
+      totalSize += fileData->getSize();
     }
   }
 
@@ -557,9 +544,12 @@ bool ArchiveImpl::extract(const QString &outputDirectory, ProgressCallback* prog
                                                   fileChangeCallback,
                                                   errorCallback,
                                                   m_PasswordCallback,
+                                                  m_LogCallback,
                                                   m_ArchivePtr,
                                                   outputDirectory,
                                                   &m_FileList[0],
+                                                  m_FileList.size(),
+                                                  totalSize,
                                                   &m_Password);
   HRESULT result = m_ArchivePtr->Extract(indices.data(), static_cast<UInt32>(indices.size()), false, m_ExtractCallback);
   //Note: m_ExtractCallBack is deleted by Extract
@@ -568,13 +558,13 @@ bool ArchiveImpl::extract(const QString &outputDirectory, ProgressCallback* prog
       //nop
     } break;
     case E_ABORT: {
-      m_LastError = ERROR_EXTRACT_CANCELLED;
+      m_LastError = Error::ERROR_EXTRACT_CANCELLED;
     } break;
     case E_OUTOFMEMORY: {
-      m_LastError = ERROR_OUT_OF_MEMORY;
+      m_LastError = Error::ERROR_OUT_OF_MEMORY;
     } break;
     default: {
-      m_LastError = ERROR_LIBRARY_ERROR;
+      m_LastError = Error::ERROR_LIBRARY_ERROR;
     } break;
   }
 
@@ -588,7 +578,7 @@ void ArchiveImpl::cancel()
 }
 
 
-extern "C" Archive *CreateArchive()
+std::unique_ptr<Archive> CreateArchive()
 {
-  return new ArchiveImpl;
+  return std::make_unique<ArchiveImpl>();
 }

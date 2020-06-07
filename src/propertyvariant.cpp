@@ -1,6 +1,24 @@
-#include "propertyvariant.h"
+/*
+Mod Organizer archive handling
 
-#include <QString>
+Copyright (C) 2012 Sebastian Herbord, 2020 MO2 Team. All rights reserved.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
+#include "propertyvariant.h"
 
 #include <guiddef.h>
 
@@ -100,22 +118,6 @@ template <> PropertyVariant::operator std::wstring() const
   }
 }
 
-template <> PropertyVariant::operator QString() const
-{
-  switch (vt)
-  {
-    case VT_EMPTY:
-      return "";
-
-    case VT_BSTR:
-      return QString::fromWCharArray(bstrVal, ::SysStringLen(bstrVal));
-
-    default:
-      throw std::runtime_error("Property is not a string");
-  }
-}
-
-
 //This is what he does, though it looks rather a strange use of the property
 template <> PropertyVariant::operator std::string() const
 {
@@ -168,6 +170,30 @@ template <> PropertyVariant& PropertyVariant::operator=(std::wstring const &str)
   if (bstrVal == NULL) {
     throw std::bad_alloc();
   }
+  return *this;
+}
+
+template <> PropertyVariant& PropertyVariant::operator=(bool const& n)
+{
+  clear();
+  vt = VT_BOOL;
+  boolVal = n ? VARIANT_TRUE : VARIANT_FALSE;
+  return *this;
+}
+
+template <> PropertyVariant& PropertyVariant::operator=(FILETIME const& n)
+{
+  clear();
+  vt = VT_FILETIME;
+  filetime = n;
+  return *this;
+}
+
+template <> PropertyVariant& PropertyVariant::operator=(uint32_t const& n)
+{
+  clear();
+  vt = VT_UI4;
+  ulVal = n;
   return *this;
 }
 

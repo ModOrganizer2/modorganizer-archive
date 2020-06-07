@@ -1,7 +1,7 @@
 /*
 Mod Organizer archive handling
 
-Copyright (C) 2012 Sebastian Herbord. All rights reserved.
+Copyright (C) 2012 Sebastian Herbord, 2020 MO2 Team. All rights reserved.
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -18,21 +18,26 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-
 #ifndef EXTRACTCALLBACK_H
 #define EXTRACTCALLBACK_H
 
-#include "callback.h"
-#include "multioutputstream.h"
-#include "unknown_impl.h"
+#include <atomic>
+#include <chrono>
+#include <filesystem>
 
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 
-#include <QDir>
-class QString;
-
 #include <atlbase.h>
+
+#include <fmt/format.h>
+
+#include "archive.h"
+#include "formatter.h"
+#include "instrument.h"
+#include "multioutputstream.h"
+#include "unknown_impl.h"
+
 
 class FileData;
 
@@ -48,14 +53,18 @@ class CArchiveExtractCallback: public IArchiveExtractCallback,
 
 public:
 
-  CArchiveExtractCallback(ProgressCallback *progressCallback,
-                          FileChangeCallback *fileChangeCallback,
-                          ErrorCallback *errorCallback,
-                          PasswordCallback *passwordCallback,
-                          IInArchive *archiveHandler,
-                          const QString &directoryPath,
-                          FileData * const *fileData,
-                          QString *password);
+  CArchiveExtractCallback(
+    Archive::ProgressCallback progressCallback,
+    Archive::FileChangeCallback fileChangeCallback,
+    Archive::ErrorCallback errorCallback,
+    Archive::PasswordCallback passwordCallback,
+    Archive::LogCallback logCallback,
+    IInArchive *archiveHandler,
+    std::wstring const& directoryPath,
+    FileData * const *fileData,
+    std::size_t nbFiles,
+    UInt64 totalFileSize,
+    std::wstring *password);
 
   virtual ~CArchiveExtractCallback();
 
@@ -68,10 +77,16 @@ public:
 
 private:
 
-  void reportError(const QString &message);
+  void reportError(const std::wstring& message);
+
+  template <class... Args>
+  void reportError(const wchar_t* format, Args&& ...args)
+  {
+    reportError(fmt::format(format, std::forward<Args>(args)...));
+  }
 
   template <typename T> bool getOptionalProperty(UInt32 index, int property, T *result) const;
-  template <typename T> T getProperty(UInt32 index, int property) const;
+  template <typename T> bool getProperty(UInt32 index, int property, T *result) const;
 
 private:
 
@@ -79,9 +94,20 @@ private:
 
   UInt64 m_Total;
 
-  QDir m_DirectoryPath;
+  std::filesystem::path m_DirectoryPath;
   bool m_Extracting;
-  bool m_Canceled;
+  std::atomic<bool> m_Canceled;
+
+
+  struct {
+    ArchiveTimers::Timer GetStream;
+    struct {
+      ArchiveTimers::Timer SetMTime;
+      ArchiveTimers::Timer Close;
+      ArchiveTimers::Timer Release;
+      ArchiveTimers::Timer SetFileAttributesW;
+    } SetOperationResult;
+  } m_Timers;
 
   struct CProcessedFileInfo {
     FILETIME MTime;
@@ -91,17 +117,23 @@ private:
     bool MTimeDefined;
   } m_ProcessedFileInfo;
 
-  CComPtr<MultiOutputStream> m_OutFileStream;
+  MultiOutputStream *m_OutputFileStream;
+  CComPtr<MultiOutputStream> m_OutFileStreamCom;
 
-  std::vector<QString> m_FullProcessedPaths;
+  std::vector<std::filesystem::path> m_FullProcessedPaths;
 
   FileData* const *m_FileData;
-  QString *m_Password;
+  std::size_t m_NbFiles;
+  UInt64 m_TotalFileSize;
+  UInt64 m_LastCallbackFileSize;
+  UInt64 m_ExtractedFileSize;
 
-  ProgressCallback *m_ProgressCallback;
-  FileChangeCallback *m_FileChangeCallback;
-  ErrorCallback *m_ErrorCallback;
-  PasswordCallback *m_PasswordCallback;
+  Archive::ProgressCallback m_ProgressCallback;
+  Archive::FileChangeCallback m_FileChangeCallback;
+  Archive::ErrorCallback m_ErrorCallback;
+  Archive::PasswordCallback m_PasswordCallback;
+  Archive::LogCallback m_LogCallback;
+  std::wstring* m_Password;
 
 };
 

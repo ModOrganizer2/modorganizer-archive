@@ -1,8 +1,27 @@
+/*
+Mod Organizer archive handling
+
+Copyright (C) 2012 Sebastian Herbord, 2020 MO2 Team. All rights reserved.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 3 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+*/
+
 #include <Unknwn.h>
 #include "multioutputstream.h"
 
-#include <QDir>
-
+#include <fcntl.h>
 #include <io.h>
 
 static inline HRESULT ConvertBoolToHRESULT(bool result)
@@ -20,28 +39,27 @@ static inline HRESULT ConvertBoolToHRESULT(bool result)
 //////////////////////////
 // MultiOutputStream
 
-MultiOutputStream::MultiOutputStream()
-{}
+MultiOutputStream::MultiOutputStream(WriteCallback callback) :
+  m_WriteCallback(callback) {}
 
-MultiOutputStream::~MultiOutputStream()
-{}
+MultiOutputStream::~MultiOutputStream() { }
 
 HRESULT MultiOutputStream::Close()
 {
-  for (OutFile &f : m_Handles) {
-    f->close();
+  for (auto& file: m_Files) {
+    file.Close();
   }
   return S_OK;
 }
 
-bool MultiOutputStream::Open(std::vector<QString> const &fileNames)
+bool MultiOutputStream::Open(std::vector<std::filesystem::path> const& filepaths)
 {
   m_ProcessedSize = 0;
   bool ok = true;
-  m_Handles.clear();
-  for (std::size_t f = 0; f != fileNames.size(); ++f) {
-    m_Handles.push_back(OutFile(new QFile(fileNames[f])));
-    if (!m_Handles[f]->open(QIODevice::WriteOnly)) {
+  m_Files.clear();
+  for (auto &path: filepaths) {
+    m_Files.emplace_back();
+    if (!m_Files.back().Open(path.native())) {
       ok = false;
     }
   }
@@ -51,13 +69,16 @@ bool MultiOutputStream::Open(std::vector<QString> const &fileNames)
 STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *processedSize)
 {
   bool update_processed(true);
-  for (OutFile &f : m_Handles) {
-    qint64 realProcessedSize = f->write(static_cast<char const *>(data), size);
-    if (realProcessedSize == -1) {
+  for (auto &file : m_Files) {
+    UInt32 realProcessedSize;
+    if (!file.Write(data, size, realProcessedSize)) {
       return ConvertBoolToHRESULT(false);
     }
     if (update_processed) {
       m_ProcessedSize += realProcessedSize;
+      if (m_WriteCallback) {
+        m_WriteCallback(realProcessedSize, m_ProcessedSize);
+      }
       update_processed = false;
     }
     if (processedSize != nullptr) {
@@ -67,14 +88,47 @@ STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *pro
   return S_OK;
 }
 
+STDMETHODIMP MultiOutputStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64* newPosition)
+{
+  if (seekOrigin >= 3)
+    return STG_E_INVALIDFUNCTION;
+
+  bool result = true;
+  for (auto& file : m_Files) {
+    UInt64 realNewPosition;
+    bool result = file.Seek(offset, seekOrigin, realNewPosition);
+    if (newPosition)
+      *newPosition = realNewPosition;
+  }
+  return ConvertBoolToHRESULT(result);
+}
+
+STDMETHODIMP MultiOutputStream::SetSize(UInt64 newSize)
+{
+  bool result = true;
+  for (auto& file : m_Files) {
+    UInt64 currentPos;
+    if (!file.Seek(0, FILE_CURRENT, currentPos))
+      return E_FAIL;
+    bool result = file.SetLength(newSize);
+    UInt64 currentPos2;
+    result = result && file.Seek(currentPos, currentPos2);
+  }
+  return result ? S_OK : E_FAIL;
+}
+
+HRESULT MultiOutputStream::GetSize(UInt64* size)
+{
+  if (m_Files.empty()) {
+    return ConvertBoolToHRESULT(false);
+  }
+  return ConvertBoolToHRESULT(m_Files[0].GetLength(*size));
+}
+
 bool MultiOutputStream::SetMTime(FILETIME const *mTime)
 {
-  for (OutFile &f : m_Handles) {
-    //Get the underlying windows handle from the QFile object.
-    HANDLE h = reinterpret_cast<HANDLE>(::_get_osfhandle(f->handle()));
-    if (! ::SetFileTime(h, nullptr, nullptr, mTime)) {
-      return false;
-    }
+  for (auto &file : m_Files) {
+    file.SetMTime(mTime);
   }
   return true;
 }

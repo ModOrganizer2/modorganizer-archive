@@ -1,7 +1,7 @@
 /*
 Mod Organizer archive handling
 
-Copyright (C) 2012 Sebastian Herbord. All rights reserved.
+Copyright (C) 2012 Sebastian Herbord, 2020 MO2 Team. All rights reserved.
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -18,14 +18,11 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-
 #include <Unknwn.h>
 #include "opencallback.h"
 
 #include "inputstream.h"
 #include "propertyvariant.h"
-
-#include <QDebug>
 
 #include <atlbase.h>
 
@@ -34,18 +31,27 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <vector>
 #include <stdexcept>
 
+#include "fileio.h"
+
+#include <fmt/format.h>
 
 #define UNUSED(x)
 
-CArchiveOpenCallback::CArchiveOpenCallback(PasswordCallback *passwordCallback, const QFileInfo &fileinfo)
+CArchiveOpenCallback::CArchiveOpenCallback(
+  Archive::PasswordCallback passwordCallback,
+  Archive::LogCallback logCallback, 
+  std::filesystem::path const& filepath)
   : m_PasswordCallback(passwordCallback)
-  , m_Path(fileinfo.absoluteDir())
-  , m_FileInfo(fileinfo)
+  , m_LogCallback(logCallback)
+  , m_Path(filepath)
   , m_SubArchiveMode(false)
-
 {
-  if (!m_FileInfo.exists()) {
+  if (!exists(filepath)) {
     throw std::runtime_error("invalid archive path");
+  }
+  
+  if (!IO::FileBase::GetFileInformation(filepath, &m_FileInfo)) {
+    throw std::runtime_error("failed to retrieve file information");
   }
 }
 
@@ -67,11 +73,11 @@ STDMETHODIMP CArchiveOpenCallback::SetCompleted(const UInt64 *UNUSED(files), con
  */
 STDMETHODIMP CArchiveOpenCallback::CryptoGetTextPassword(BSTR* passwordOut)
 {
-  if (m_PasswordCallback == nullptr) {
+  if (!m_PasswordCallback) {
     return E_ABORT;
   }
-  (*m_PasswordCallback)(&m_Password);
-  *passwordOut = ::SysAllocString(m_Password.toStdWString().c_str());
+  m_Password = m_PasswordCallback();
+  *passwordOut = ::SysAllocString(m_Password.c_str());
   return *passwordOut != 0 ? S_OK : E_OUTOFMEMORY;
 }
 
@@ -91,20 +97,26 @@ STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT *value
   //A scan of the source code indicates that the only things that ever call the
   //IArchiveOpenVolumeCallback interface ask for the file name and size.
   PropertyVariant &prop = *static_cast<PropertyVariant*>(value);
+
   switch (propID) {
     case kpidName: {
       if (m_SubArchiveMode) {
         prop = m_SubArchiveName;
       } else {
-        prop = m_FileInfo.fileName().toStdWString();
+        // Note: Need to call .native(), otherwize we get a link error because we try to
+        // assign a fs::path to the variant.
+        prop = m_Path.filename().native();
       }
     } break;
 
-    case kpidSize: {
-        prop = static_cast<UInt64>(m_FileInfo.size());
-    } break;
+    case kpidIsDir:  prop = m_FileInfo.isDir(); break;
+    case kpidSize:   prop = m_FileInfo.fileSize(); break;
+    case kpidAttrib: prop = m_FileInfo.fileAttributes(); break;
+    case kpidCTime:  prop = m_FileInfo.creationTime(); break;
+    case kpidATime:  prop = m_FileInfo.lastAccessTime(); break;
+    case kpidMTime:  prop = m_FileInfo.lastWriteTime(); break;
 
-    default: qDebug() << "Unexpected property " << propID;
+    default: m_LogCallback(Archive::LogLevel::Warning, fmt::format(L"Unexpected property {}.", propID));
   }
   return S_OK;
 }
@@ -113,16 +125,13 @@ STDMETHODIMP CArchiveOpenCallback::GetStream(const wchar_t *name, IInStream **in
 {
   *inStream = nullptr;
 
-  QString filename = QString::fromWCharArray(name);
-  m_FileInfo.setFile(m_Path.filePath(filename));
-
-  if (!m_FileInfo.exists() || m_FileInfo.isDir()) {
+  if (!exists(m_FileInfo.path()) || m_FileInfo.isDir()) {
     return S_FALSE;
   }
 
   CComPtr<InputStream> inFile(new InputStream);
 
-  if (!inFile->Open(m_FileInfo.absoluteFilePath())) {
+  if (!inFile->Open(m_FileInfo.path())) {
     return ::GetLastError();
   }
 
