@@ -174,6 +174,8 @@ namespace IO {
   inline std::filesystem::path make_path(std::wstring const& pathstr) {
     namespace fs = std::filesystem;
     constexpr const wchar_t* lprefix = L"\\\\?\\";
+    constexpr const wchar_t* unc_prefix = L"\\\\";
+    constexpr const wchar_t* unc_lprefix = L"\\\\?\\UNC\\";
 
     // If path is already a long path, just return it:
     if (pathstr.starts_with(lprefix)) {
@@ -187,9 +189,23 @@ namespace IO {
       path = fs::absolute(path);
     }
 
+    // backslashes
+    path = path.make_preferred();
+
+    // Get rid of duplicate separators and relative moves
+    path = path.lexically_normal();
+
+
+    const std::wstring pathstr_fixed = path.native();
+
+    // If this is a UNC, the prefix is different
+    if (pathstr_fixed.starts_with(unc_prefix)) {
+      return fs::path{ unc_lprefix + pathstr_fixed.substr(2) };
+    }
+
     // Add the long-path prefix (cannot concatenate string an path so need
     // to call .native() to concatenate):
-    return fs::path{ lprefix + path.native() }.make_preferred();
+    return fs::path{ lprefix + pathstr_fixed };
   }
 
 }
