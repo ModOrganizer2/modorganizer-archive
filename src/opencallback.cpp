@@ -39,7 +39,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 CArchiveOpenCallback::CArchiveOpenCallback(
   Archive::PasswordCallback passwordCallback,
-  Archive::LogCallback logCallback, 
+  Archive::LogCallback logCallback,
   std::filesystem::path const& filepath)
   : m_PasswordCallback(passwordCallback)
   , m_LogCallback(logCallback)
@@ -49,7 +49,7 @@ CArchiveOpenCallback::CArchiveOpenCallback(
   if (!exists(filepath)) {
     throw std::runtime_error("invalid archive path");
   }
-  
+
   if (!IO::FileBase::GetFileInformation(filepath, &m_FileInfo)) {
     throw std::runtime_error("failed to retrieve file information");
   }
@@ -125,7 +125,23 @@ STDMETHODIMP CArchiveOpenCallback::GetStream(const wchar_t *name, IInStream **in
 {
   *inStream = nullptr;
 
+  // this function will be called repeatedly for split archives, `name` will
+  // have increasing numbers in the extension and S_FALSE must be returned
+  // when a filename doesn't exist so the search stops
+
+  if (!name) {
+    return S_FALSE;
+  }
+
+  // `name` is just the filename, so build a path from the directory that
+  // contained the last file
+  const auto path = m_Path.parent_path() / name;
+
   if (!exists(m_FileInfo.path()) || m_FileInfo.isDir()) {
+    return S_FALSE;
+  }
+
+  if (!IO::FileBase::GetFileInformation(path, &m_FileInfo)) {
     return S_FALSE;
   }
 
