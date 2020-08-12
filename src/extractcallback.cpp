@@ -153,11 +153,7 @@ template <typename T> bool CArchiveExtractCallback::getProperty(UInt32 index, in
     m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Error getting property {}.", property));
     return false;
   }
-  if (prop.is_empty()) {
-    m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Error getting property {}.", property));
-    return false;
 
-  }
   *result = static_cast<T>(prop);
   return true;
 }
