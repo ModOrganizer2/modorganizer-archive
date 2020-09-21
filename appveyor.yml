@@ -10,7 +10,7 @@ build_script:
 - ps: >-
     git clone --depth=1 https://github.com/ModOrganizer2/modorganizer-umbrella.git c:\projects\modorganizer-umbrella 2> $null
 
-    git checkout $(git show-ref --verify --quiet refs/remotes/origin/${env:APPVEYOR_REPO_BRANCH} || echo '-b') ${env:APPVEYOR_REPO_BRANCH}
+    git checkout $(If(git show-ref --verify --quiet refs/remotes/origin/${env:APPVEYOR_REPO_BRANCH}) {} Else {echo '-b'}) ${env:APPVEYOR_REPO_BRANCH}
 
     mkdir c:\projects\modorganizer-build -type directory
 
