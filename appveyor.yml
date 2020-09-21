@@ -10,7 +10,7 @@ build_script:
 - pwsh: >-
     git clone --depth=1 https://github.com/ModOrganizer2/modorganizer-umbrella.git c:\projects\modorganizer-umbrella
 
-    mkdir c:\projects\modorganizer-build -type directory
+    New-Item -ItemType Directory -Path c:\projects\modorganizer-build
 
     cd c:\projects\modorganizer-umbrella
 
