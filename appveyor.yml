@@ -14,7 +14,7 @@ build_script:
 
     cd c:\projects\modorganizer-umbrella
 
-    git checkout $(If(git show-ref --verify --quiet refs/remotes/origin/${env:APPVEYOR_REPO_BRANCH}) {} Else {echo '-b'}) ${env:APPVEYOR_REPO_BRANCH}
+    git checkout $(git show-ref --verify --quiet refs/remotes/origin/${env:APPVEYOR_REPO_BRANCH} || echo '-b') ${env:APPVEYOR_REPO_BRANCH}
 
     C:\Python37-x64\python.exe unimake.py -d c:\projects\modorganizer-build -s Appveyor_Build=True ${env:APPVEYOR_PROJECT_NAME}
 artifacts:
