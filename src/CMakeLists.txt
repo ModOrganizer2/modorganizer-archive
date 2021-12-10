@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 # appveyor does not build modorganizer in its standard location, so use
 # DEPENDENCIES_DIR to find cmake_common
-if(EXISTS ${DEPENDENCIES_DIR}/modorganizer_super/cmake_common)
-	include(${DEPENDENCIES_DIR}/modorganizer_super/cmake_common/src.cmake)
+if(EXISTS ${LOCAL_DEPENDENCIES_DIR}/modorganizer_super/cmake_common)
+	include(${LOCAL_DEPENDENCIES_DIR}/modorganizer_super/cmake_common/src.cmake)
 	add_definitions(-DMODORGANIZER_ARCHIVE_BUILDING)
 else()
 	file(GLOB_RECURSE source_files CONFIGURE_DEPENDS *.cpp)
