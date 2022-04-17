@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <atlbase.h>
 
 #include <fmt/format.h>
+#include <fmt/xchar.h>
 
 #include "archive.h"
 #include "formatter.h"
