@@ -51,8 +51,8 @@ public:
 
   const std::wstring& GetPassword() const { return m_Password; }
 
-  INTERFACE_IArchiveOpenCallback(;)
-  INTERFACE_IArchiveOpenVolumeCallback(;)
+  Z7_IFACE_COM7_IMP(IArchiveOpenCallback)
+  Z7_IFACE_COM7_IMP(IArchiveOpenVolumeCallback)
 
   // ICryptoGetTextPassword interface
   STDMETHOD(CryptoGetTextPassword)(BSTR *password);

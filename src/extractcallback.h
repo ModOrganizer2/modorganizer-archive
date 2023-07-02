@@ -71,7 +71,8 @@ public:
 
   void SetCanceled(bool aCanceled);
 
-  INTERFACE_IArchiveExtractCallback(;)
+  Z7_IFACE_COM7_IMP(IProgress)
+  Z7_IFACE_COM7_IMP(IArchiveExtractCallback)
 
   // ICryptoGetTextPassword
   STDMETHOD(CryptoGetTextPassword)(BSTR *aPassword);
