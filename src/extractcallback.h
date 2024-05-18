@@ -73,7 +73,7 @@ private:
   void reportError(const std::wstring& message);
 
   template <class... Args>
-  void reportError(const wchar_t* format, Args&&... args)
+  void reportError(fmt::wformat_string<Args...> format, Args&&... args)
   {
     reportError(fmt::format(format, std::forward<Args>(args)...));
   }
