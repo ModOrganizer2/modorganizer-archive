@@ -39,33 +39,25 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "multioutputstream.h"
 #include "unknown_impl.h"
 
-
 class FileData;
 
-class CArchiveExtractCallback: public IArchiveExtractCallback,
-                               public ICryptoGetTextPassword
+class CArchiveExtractCallback : public IArchiveExtractCallback,
+                                public ICryptoGetTextPassword
 {
 
-  //A note: It appears that the IArchiveExtractCallback interface includes the
-  //IProgress interface, swo we need to respond to it
-  UNKNOWN_3_INTERFACE(IArchiveExtractCallback,
-                      ICryptoGetTextPassword,
-                      IProgress);
+  // A note: It appears that the IArchiveExtractCallback interface includes the
+  // IProgress interface, swo we need to respond to it
+  UNKNOWN_3_INTERFACE(IArchiveExtractCallback, ICryptoGetTextPassword, IProgress);
 
 public:
-
-  CArchiveExtractCallback(
-    Archive::ProgressCallback progressCallback,
-    Archive::FileChangeCallback fileChangeCallback,
-    Archive::ErrorCallback errorCallback,
-    Archive::PasswordCallback passwordCallback,
-    Archive::LogCallback logCallback,
-    IInArchive *archiveHandler,
-    std::wstring const& directoryPath,
-    FileData * const *fileData,
-    std::size_t nbFiles,
-    UInt64 totalFileSize,
-    std::wstring *password);
+  CArchiveExtractCallback(Archive::ProgressCallback progressCallback,
+                          Archive::FileChangeCallback fileChangeCallback,
+                          Archive::ErrorCallback errorCallback,
+                          Archive::PasswordCallback passwordCallback,
+                          Archive::LogCallback logCallback, IInArchive* archiveHandler,
+                          std::wstring const& directoryPath, FileData* const* fileData,
+                          std::size_t nbFiles, UInt64 totalFileSize,
+                          std::wstring* password);
 
   virtual ~CArchiveExtractCallback();
 
@@ -75,23 +67,23 @@ public:
   Z7_IFACE_COM7_IMP(IArchiveExtractCallback)
 
   // ICryptoGetTextPassword
-  STDMETHOD(CryptoGetTextPassword)(BSTR *aPassword);
+  STDMETHOD(CryptoGetTextPassword)(BSTR* aPassword);
 
 private:
-
   void reportError(const std::wstring& message);
 
   template <class... Args>
-  void reportError(const wchar_t* format, Args&& ...args)
+  void reportError(const wchar_t* format, Args&&... args)
   {
     reportError(fmt::format(format, std::forward<Args>(args)...));
   }
 
-  template <typename T> bool getOptionalProperty(UInt32 index, int property, T *result) const;
-  template <typename T> bool getProperty(UInt32 index, int property, T *result) const;
+  template <typename T>
+  bool getOptionalProperty(UInt32 index, int property, T* result) const;
+  template <typename T>
+  bool getProperty(UInt32 index, int property, T* result) const;
 
 private:
-
   CComPtr<IInArchive> m_ArchiveHandler;
 
   UInt64 m_Total;
@@ -100,10 +92,11 @@ private:
   bool m_Extracting;
   std::atomic<bool> m_Canceled;
 
-
-  struct {
+  struct
+  {
     ArchiveTimers::Timer GetStream;
-    struct {
+    struct
+    {
       ArchiveTimers::Timer SetMTime;
       ArchiveTimers::Timer Close;
       ArchiveTimers::Timer Release;
@@ -111,7 +104,8 @@ private:
     } SetOperationResult;
   } m_Timers;
 
-  struct CProcessedFileInfo {
+  struct CProcessedFileInfo
+  {
     FILETIME MTime;
     UInt32 Attrib;
     bool isDir;
@@ -119,12 +113,12 @@ private:
     bool MTimeDefined;
   } m_ProcessedFileInfo;
 
-  MultiOutputStream *m_OutputFileStream;
+  MultiOutputStream* m_OutputFileStream;
   CComPtr<MultiOutputStream> m_OutFileStreamCom;
 
   std::vector<std::filesystem::path> m_FullProcessedPaths;
 
-  FileData* const *m_FileData;
+  FileData* const* m_FileData;
   std::size_t m_NbFiles;
   UInt64 m_TotalFileSize;
   UInt64 m_LastCallbackFileSize;
@@ -136,8 +130,6 @@ private:
   Archive::PasswordCallback m_PasswordCallback;
   Archive::LogCallback m_LogCallback;
   std::wstring* m_Password;
-
 };
 
-
-#endif // EXTRACTCALLBACK_H
+#endif  // EXTRACTCALLBACK_H

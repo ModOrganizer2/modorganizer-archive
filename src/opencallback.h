@@ -31,23 +31,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include "fileio.h"
 #include "unknown_impl.h"
 
-
-class CArchiveOpenCallback: public IArchiveOpenCallback,
-                            public IArchiveOpenVolumeCallback,
-                            public ICryptoGetTextPassword,
-                            public IArchiveOpenSetSubArchiveName
+class CArchiveOpenCallback : public IArchiveOpenCallback,
+                             public IArchiveOpenVolumeCallback,
+                             public ICryptoGetTextPassword,
+                             public IArchiveOpenSetSubArchiveName
 {
 
-  UNKNOWN_4_INTERFACE(IArchiveOpenCallback,
-                      IArchiveOpenVolumeCallback,
-                      ICryptoGetTextPassword,
-                      IArchiveOpenSetSubArchiveName);
+  UNKNOWN_4_INTERFACE(IArchiveOpenCallback, IArchiveOpenVolumeCallback,
+                      ICryptoGetTextPassword, IArchiveOpenSetSubArchiveName);
 
 public:
+  CArchiveOpenCallback(Archive::PasswordCallback passwordCallback,
+                       Archive::LogCallback logCallback,
+                       std::filesystem::path const& filepath);
 
-  CArchiveOpenCallback(Archive::PasswordCallback passwordCallback, Archive::LogCallback logCallback, std::filesystem::path const &filepath);
-
-  ~CArchiveOpenCallback() { }
+  ~CArchiveOpenCallback() {}
 
   const std::wstring& GetPassword() const { return m_Password; }
 
@@ -55,14 +53,14 @@ public:
   Z7_IFACE_COM7_IMP(IArchiveOpenVolumeCallback)
 
   // ICryptoGetTextPassword interface
-  STDMETHOD(CryptoGetTextPassword)(BSTR *password);
-  //Not implemented STDMETHOD(CryptoGetTextPassword2)(Int32 *passwordIsDefined, BSTR *password);
+  STDMETHOD(CryptoGetTextPassword)(BSTR* password);
+  // Not implemented STDMETHOD(CryptoGetTextPassword2)(Int32 *passwordIsDefined, BSTR
+  // *password);
 
   // IArchiveOpenSetSubArchiveName interface
-  STDMETHOD(SetSubArchiveName)(const wchar_t *name);
+  STDMETHOD(SetSubArchiveName)(const wchar_t* name);
 
 private:
-
   Archive::PasswordCallback m_PasswordCallback;
   Archive::LogCallback m_LogCallback;
   std::wstring m_Password;
@@ -72,7 +70,6 @@ private:
 
   bool m_SubArchiveMode;
   std::wstring m_SubArchiveName;
-
 };
 
-#endif // OPENCALLBACK_H
+#endif  // OPENCALLBACK_H

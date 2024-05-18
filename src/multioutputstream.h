@@ -28,8 +28,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "7zip/IStream.h"
 
-#include "unknown_impl.h"
 #include "fileio.h"
+#include "unknown_impl.h"
 
 /** This class allows you to open and output to multiple file handles at a time.
  * It implements the ISequentalOutputStream interface and has some extra functions
@@ -38,14 +38,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  * Note that the handling on errors could be better.
  */
-class MultiOutputStream : 
-  public IOutStream
+class MultiOutputStream : public IOutStream
 {
 
   UNKNOWN_1_INTERFACE(IOutStream);
 
 public:
-
   // Callback for write. Args are: 1) number of bytes that have been
   // written for this call, 2) number of bytes that have been written
   // in total.
@@ -59,7 +57,7 @@ public:
    *
    * @returns true if all went OK, false if any file failed to open
    */
-  bool Open(std::vector<std::filesystem::path> const &fileNames);
+  bool Open(std::vector<std::filesystem::path> const& fileNames);
 
   /** Closes all the files opened by the last open
    *
@@ -72,7 +70,7 @@ public:
    * @returns true if all files had the time set succesfully, false otherwise
    * note that this will give up as soon as it gets an error
    */
-  bool SetMTime(FILETIME const *mTime);
+  bool SetMTime(FILETIME const* mTime);
 
   // ISequentialOutStream interface
 
@@ -83,14 +81,13 @@ public:
    * @warn If an error happens, the code will not attempt any further writing,
    * so some files might not get written to at all
    */
-  STDMETHOD(Write)(const void *data, UInt32 size, UInt32 *processedSize) override;
+  STDMETHOD(Write)(const void* data, UInt32 size, UInt32* processedSize) override;
 
   STDMETHOD(Seek)(Int64 offset, UInt32 seekOrigin, UInt64* newPosition) override;
   STDMETHOD(SetSize)(UInt64 newSize) override;
   HRESULT GetSize(UInt64* size);
 
 private:
-
   WriteCallback m_WriteCallback;
 
   /** This is the amount of data written to *any one* file.
@@ -104,7 +101,6 @@ private:
    *
    */
   std::vector<IO::FileOut> m_Files;
-
 };
 
-#endif // MULTIOUTPUTSTREAM_H
+#endif  // MULTIOUTPUTSTREAM_H

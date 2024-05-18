@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #ifndef INPUTSTREAM_H
 #define INPUTSTREAM_H
 
-
 #include "7zip/IStream.h"
 
 #include <filesystem>
@@ -33,8 +32,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  * Note that the handling on errors could be better.
  */
-class InputStream :
-    public IInStream
+class InputStream : public IInStream
 {
 
   UNKNOWN_1_INTERFACE(IInStream);
@@ -44,13 +42,13 @@ public:
 
   virtual ~InputStream();
 
-  bool Open(std::filesystem::path const &filename);
+  bool Open(std::filesystem::path const& filename);
 
-  STDMETHOD(Read)(void *data, UInt32 size, UInt32 *processedSize);
-  STDMETHOD(Seek)(Int64 offset, UInt32 seekOrigin, UInt64 *newPosition);
+  STDMETHOD(Read)(void* data, UInt32 size, UInt32* processedSize);
+  STDMETHOD(Seek)(Int64 offset, UInt32 seekOrigin, UInt64* newPosition);
 
 private:
   IO::FileIn m_File;
 };
 
-#endif // INPUTSTREAM_H
+#endif  // INPUTSTREAM_H

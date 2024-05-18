@@ -18,8 +18,8 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <Unknwn.h>
 #include "inputstream.h"
+#include <Unknwn.h>
 
 static inline HRESULT ConvertBoolToHRESULT(bool result)
 {
@@ -33,21 +33,19 @@ static inline HRESULT ConvertBoolToHRESULT(bool result)
   return HRESULT_FROM_WIN32(lastError);
 }
 
-InputStream::InputStream()
-{}
+InputStream::InputStream() {}
 
-InputStream::~InputStream() { }
-
+InputStream::~InputStream() {}
 
 bool InputStream::Open(std::filesystem::path const& filename)
 {
   return m_File.Open(filename);
 }
 
-STDMETHODIMP InputStream::Read(void *data, UInt32 size, UInt32 *processedSize)
+STDMETHODIMP InputStream::Read(void* data, UInt32 size, UInt32* processedSize)
 {
   UInt32 realProcessedSize;
-  bool result =  m_File.Read(data, size, realProcessedSize);
+  bool result = m_File.Read(data, size, realProcessedSize);
 
   if (processedSize != nullptr) {
     *processedSize = realProcessedSize;
@@ -60,10 +58,10 @@ STDMETHODIMP InputStream::Read(void *data, UInt32 size, UInt32 *processedSize)
   return HRESULT_FROM_WIN32(::GetLastError());
 }
 
-STDMETHODIMP InputStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64 *newPosition)
+STDMETHODIMP InputStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64* newPosition)
 {
   UInt64 realNewPosition = offset;
-  bool result = m_File.Seek(offset, seekOrigin, realNewPosition);
+  bool result            = m_File.Seek(offset, seekOrigin, realNewPosition);
 
   if (newPosition) {
     *newPosition = realNewPosition;

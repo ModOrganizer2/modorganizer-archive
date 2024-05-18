@@ -59,75 +59,78 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 /* Do not use these macros, use the ones at the bottom */
-#define UNKNOWN__INTERFACE_BEGIN\
- public:\
-  STDMETHOD_(ULONG, AddRef)()\
-  {\
-    return ::InterlockedIncrement(&m_RefCount__);\
-  }\
-\
-  STDMETHOD_(ULONG, Release)()\
-  {\
-    ULONG res = ::InterlockedDecrement(&m_RefCount__);\
-    if (res == 0) {\
-      delete this;\
-    }\
-    return res;\
-  }\
-\
-  STDMETHOD(QueryInterface)(REFGUID iid, void **outObject)\
-  {\
+#define UNKNOWN__INTERFACE_BEGIN                                                       \
+public:                                                                                \
+  STDMETHOD_(ULONG, AddRef)()                                                          \
+  {                                                                                    \
+    return ::InterlockedIncrement(&m_RefCount__);                                      \
+  }                                                                                    \
+                                                                                       \
+  STDMETHOD_(ULONG, Release)()                                                         \
+  {                                                                                    \
+    ULONG res = ::InterlockedDecrement(&m_RefCount__);                                 \
+    if (res == 0) {                                                                    \
+      delete this;                                                                     \
+    }                                                                                  \
+    return res;                                                                        \
+  }                                                                                    \
+                                                                                       \
+  STDMETHOD(QueryInterface)(REFGUID iid, void** outObject)                             \
+  {                                                                                    \
     if (iid == IID_IUnknown) {
 
-#define UNKNOWN__INTERFACE_UNKNOWN(interface)\
-      *outObject = static_cast<IUnknown *>(static_cast<interface *>(this));\
-    }
+#define UNKNOWN__INTERFACE_UNKNOWN(interface)                                          \
+  *outObject = static_cast<IUnknown*>(static_cast<interface*>(this));                  \
+  }
 
-#define UNKNOWN__INTERFACE_NAME(interface)\
-    else if (iid == IID_##interface) {\
-      *outObject = static_cast<interface *>(this);\
-    }
+#define UNKNOWN__INTERFACE_NAME(interface)                                             \
+  else if (iid == IID_##interface)                                                     \
+  {                                                                                    \
+    *outObject = static_cast<interface*>(this);                                        \
+  }
 
-#define UNKNOWN__INTERFACE_END\
-    else {\
-      *outObject = nullptr;\
-      return E_NOINTERFACE;\
-    }\
-    AddRef();\
-    return S_OK;\
-  }\
- private:\
+#define UNKNOWN__INTERFACE_END                                                         \
+  else                                                                                 \
+  {                                                                                    \
+    *outObject = nullptr;                                                              \
+    return E_NOINTERFACE;                                                              \
+  }                                                                                    \
+  AddRef();                                                                            \
+  return S_OK;                                                                         \
+  }                                                                                    \
+                                                                                       \
+private:                                                                               \
   ULONG m_RefCount__ = 0
 
 /* These are the macros you should be using */
-#define UNKNOWN_1_INTERFACE(interface)\
-  UNKNOWN__INTERFACE_BEGIN\
-  UNKNOWN__INTERFACE_UNKNOWN(interface)\
-  UNKNOWN__INTERFACE_NAME(interface)\
+#define UNKNOWN_1_INTERFACE(interface)                                                 \
+  UNKNOWN__INTERFACE_BEGIN                                                             \
+  UNKNOWN__INTERFACE_UNKNOWN(interface)                                                \
+  UNKNOWN__INTERFACE_NAME(interface)                                                   \
   UNKNOWN__INTERFACE_END
 
-#define UNKNOWN_2_INTERFACE(interface1, interface2)\
-  UNKNOWN__INTERFACE_BEGIN\
-  UNKNOWN__INTERFACE_UNKNOWN(interface1)\
-  UNKNOWN__INTERFACE_NAME(interface1)\
-  UNKNOWN__INTERFACE_NAME(interface2)\
+#define UNKNOWN_2_INTERFACE(interface1, interface2)                                    \
+  UNKNOWN__INTERFACE_BEGIN                                                             \
+  UNKNOWN__INTERFACE_UNKNOWN(interface1)                                               \
+  UNKNOWN__INTERFACE_NAME(interface1)                                                  \
+  UNKNOWN__INTERFACE_NAME(interface2)                                                  \
   UNKNOWN__INTERFACE_END
 
-#define UNKNOWN_3_INTERFACE(interface1, interface2, interface3)\
-  UNKNOWN__INTERFACE_BEGIN\
-  UNKNOWN__INTERFACE_UNKNOWN(interface1)\
-  UNKNOWN__INTERFACE_NAME(interface1)\
-  UNKNOWN__INTERFACE_NAME(interface2)\
-  UNKNOWN__INTERFACE_NAME(interface3)\
+#define UNKNOWN_3_INTERFACE(interface1, interface2, interface3)                        \
+  UNKNOWN__INTERFACE_BEGIN                                                             \
+  UNKNOWN__INTERFACE_UNKNOWN(interface1)                                               \
+  UNKNOWN__INTERFACE_NAME(interface1)                                                  \
+  UNKNOWN__INTERFACE_NAME(interface2)                                                  \
+  UNKNOWN__INTERFACE_NAME(interface3)                                                  \
   UNKNOWN__INTERFACE_END
 
-#define UNKNOWN_4_INTERFACE(interface1, interface2, interface3, interface4)\
-  UNKNOWN__INTERFACE_BEGIN\
-  UNKNOWN__INTERFACE_UNKNOWN(interface1)\
-  UNKNOWN__INTERFACE_NAME(interface1)\
-  UNKNOWN__INTERFACE_NAME(interface2)\
-  UNKNOWN__INTERFACE_NAME(interface3)\
-  UNKNOWN__INTERFACE_NAME(interface4)\
+#define UNKNOWN_4_INTERFACE(interface1, interface2, interface3, interface4)            \
+  UNKNOWN__INTERFACE_BEGIN                                                             \
+  UNKNOWN__INTERFACE_UNKNOWN(interface1)                                               \
+  UNKNOWN__INTERFACE_NAME(interface1)                                                  \
+  UNKNOWN__INTERFACE_NAME(interface2)                                                  \
+  UNKNOWN__INTERFACE_NAME(interface3)                                                  \
+  UNKNOWN__INTERFACE_NAME(interface4)                                                  \
   UNKNOWN__INTERFACE_END
 
-#endif // UNKNOWN_IMPL_H
+#endif  // UNKNOWN_IMPL_H

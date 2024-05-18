@@ -23,87 +23,69 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <fmt/format.h>
 #include <fmt/xchar.h>
 
-#include "extractcallback.h"
 #include "archive.h"
+#include "extractcallback.h"
 #include "propertyvariant.h"
 
 #include <filesystem>
-#include <string>
 #include <stdexcept>
+#include <string>
 
 std::wstring operationResultToString(Int32 operationResult)
 {
   namespace R = NArchive::NExtract::NOperationResult;
 
-  switch(operationResult)
-  {
-    case R::kOK:
-      return {};
+  switch (operationResult) {
+  case R::kOK:
+    return {};
 
-    case R::kUnsupportedMethod:
-      return L"Encoding method unsupported";
+  case R::kUnsupportedMethod:
+    return L"Encoding method unsupported";
 
-    case R::kDataError:
-      return L"Data error";
+  case R::kDataError:
+    return L"Data error";
 
-    case R::kCRCError:
-      return L"CRC error";
+  case R::kCRCError:
+    return L"CRC error";
 
-    case R::kUnavailable:
-      return L"Unavailable";
+  case R::kUnavailable:
+    return L"Unavailable";
 
-    case R::kUnexpectedEnd:
-      return L"Unexpected end of archive";
+  case R::kUnexpectedEnd:
+    return L"Unexpected end of archive";
 
-    case R::kDataAfterEnd:
-      return L"Data after end of archive";
+  case R::kDataAfterEnd:
+    return L"Data after end of archive";
 
-    case R::kIsNotArc:
-      return L"Not an ARC";
+  case R::kIsNotArc:
+    return L"Not an ARC";
 
-    case R::kHeadersError:
-      return L"Bad headers";
+  case R::kHeadersError:
+    return L"Bad headers";
 
-    case R::kWrongPassword:
-      return L"Wrong password";
+  case R::kWrongPassword:
+    return L"Wrong password";
 
-    default:
-      return fmt::format(L"Unknown error {}", operationResult);
+  default:
+    return fmt::format(L"Unknown error {}", operationResult);
   }
 }
 
 CArchiveExtractCallback::CArchiveExtractCallback(
-  Archive::ProgressCallback progressCallback,
-  Archive::FileChangeCallback fileChangeCallback,
-  Archive::ErrorCallback errorCallback,
-  Archive::PasswordCallback passwordCallback,
-  Archive::LogCallback logCallback,
-  IInArchive *archiveHandler,
-  std::wstring const& directoryPath,
-  FileData* const *fileData,
-  std::size_t nbFiles,
-  UInt64 totalFileSize,
-  std::wstring *password)
-  : m_ArchiveHandler(archiveHandler)
-  , m_Total(0)
-  , m_DirectoryPath()
-  , m_Extracting(false)
-  , m_Canceled(false)
-  , m_Timers{}
-  , m_ProcessedFileInfo{}
-  , m_OutputFileStream{}
-  , m_OutFileStreamCom{}
-  , m_FileData(fileData)
-  , m_NbFiles(nbFiles)
-  , m_TotalFileSize(totalFileSize)
-  , m_ExtractedFileSize(0)
-  , m_LastCallbackFileSize(0)
-  , m_ProgressCallback(progressCallback)
-  , m_FileChangeCallback(fileChangeCallback)
-  , m_ErrorCallback(errorCallback)
-  , m_PasswordCallback(passwordCallback)
-  , m_LogCallback(logCallback)
-  , m_Password(password)
+    Archive::ProgressCallback progressCallback,
+    Archive::FileChangeCallback fileChangeCallback,
+    Archive::ErrorCallback errorCallback, Archive::PasswordCallback passwordCallback,
+    Archive::LogCallback logCallback, IInArchive* archiveHandler,
+    std::wstring const& directoryPath, FileData* const* fileData, std::size_t nbFiles,
+    UInt64 totalFileSize, std::wstring* password)
+    : m_ArchiveHandler(archiveHandler), m_Total(0), m_DirectoryPath(),
+      m_Extracting(false), m_Canceled(false), m_Timers{}, m_ProcessedFileInfo{},
+      m_OutputFileStream{}, m_OutFileStreamCom{}, m_FileData(fileData),
+      m_NbFiles(nbFiles), m_TotalFileSize(totalFileSize), m_ExtractedFileSize(0),
+      m_LastCallbackFileSize(0), m_ProgressCallback(progressCallback),
+      m_FileChangeCallback(fileChangeCallback), m_ErrorCallback(errorCallback),
+      m_PasswordCallback(passwordCallback), m_LogCallback(logCallback),
+      m_Password(password)
 {
   m_DirectoryPath = IO::make_path(directoryPath);
 }
@@ -112,10 +94,15 @@ CArchiveExtractCallback::~CArchiveExtractCallback()
 {
 #ifdef INSTRUMENT_ARCHIVE
   m_LogCallback(Archive::LogLevel::Debug, m_Timers.GetStream.toString(L"GetStream"));
-  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.SetMTime.toString(L"SetOperationResult.SetMTime"));
-  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.Close.toString(L"SetOperationResult.Close"));
-  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.Release.toString(L"SetOperationResult.Release"));
-  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.SetFileAttributesW.toString(L"SetOperationResult.SetFileAttributesW"));
+  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.SetMTime.toString(
+                                              L"SetOperationResult.SetMTime"));
+  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.Close.toString(
+                                              L"SetOperationResult.Close"));
+  m_LogCallback(Archive::LogLevel::Debug, m_Timers.SetOperationResult.Release.toString(
+                                              L"SetOperationResult.Release"));
+  m_LogCallback(Archive::LogLevel::Debug,
+                m_Timers.SetOperationResult.SetFileAttributesW.toString(
+                    L"SetOperationResult.SetFileAttributesW"));
 #endif
 }
 
@@ -125,7 +112,7 @@ STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)
   return S_OK;
 }
 
-STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64 *completed)
+STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64* completed)
 {
   if (m_ProgressCallback) {
     m_ProgressCallback(Archive::ProgressType::ARCHIVE, *completed, m_Total);
@@ -133,11 +120,14 @@ STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64 *completed)
   return m_Canceled ? E_ABORT : S_OK;
 }
 
-template <typename T> bool CArchiveExtractCallback::getOptionalProperty(UInt32 index, int property, T *result) const
+template <typename T>
+bool CArchiveExtractCallback::getOptionalProperty(UInt32 index, int property,
+                                                  T* result) const
 {
   PropertyVariant prop;
   if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
-    m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Error getting property {}.", property));
+    m_LogCallback(Archive::LogLevel::Error,
+                  fmt::format(L"Error getting property {}.", property));
     return false;
   }
   if (prop.is_empty()) {
@@ -147,11 +137,13 @@ template <typename T> bool CArchiveExtractCallback::getOptionalProperty(UInt32 i
   return true;
 }
 
-template <typename T> bool CArchiveExtractCallback::getProperty(UInt32 index, int property, T *result) const
+template <typename T>
+bool CArchiveExtractCallback::getProperty(UInt32 index, int property, T* result) const
 {
   PropertyVariant prop;
   if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
-    m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Error getting property {}.", property));
+    m_LogCallback(Archive::LogLevel::Error,
+                  fmt::format(L"Error getting property {}.", property));
     return false;
   }
 
@@ -159,9 +151,11 @@ template <typename T> bool CArchiveExtractCallback::getProperty(UInt32 index, in
   return true;
 }
 
-STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStream **outStream, Int32 askExtractMode)
+STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index,
+                                                ISequentialOutStream** outStream,
+                                                Int32 askExtractMode)
 {
-  auto guard = m_Timers.GetStream.instrument();
+  auto guard   = m_Timers.GetStream.instrument();
   namespace fs = std::filesystem;
 
   *outStream = nullptr;
@@ -180,17 +174,18 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     return S_OK;
   }
 
-  try
-  {
-    m_ProcessedFileInfo.AttribDefined = getOptionalProperty(index, kpidAttrib, &m_ProcessedFileInfo.Attrib);
+  try {
+    m_ProcessedFileInfo.AttribDefined =
+        getOptionalProperty(index, kpidAttrib, &m_ProcessedFileInfo.Attrib);
 
     if (!getProperty(index, kpidIsDir, &m_ProcessedFileInfo.isDir)) {
       return E_ABORT;
     }
 
-    //Why do we do this? And if we are doing this, shouldn't we copy the created
-    //and accessed times (kpidATime, kpidCTime) as well?
-    m_ProcessedFileInfo.MTimeDefined = getOptionalProperty(index, kpidMTime, &m_ProcessedFileInfo.MTime);
+    // Why do we do this? And if we are doing this, shouldn't we copy the created
+    // and accessed times (kpidATime, kpidCTime) as well?
+    m_ProcessedFileInfo.MTimeDefined =
+        getOptionalProperty(index, kpidMTime, &m_ProcessedFileInfo.MTime);
 
     if (m_ProcessedFileInfo.isDir) {
       for (auto const& filename : filenames) {
@@ -206,19 +201,19 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     } else {
       for (auto const& filename : filenames) {
         auto fullProcessedPath = m_DirectoryPath / fs::path(filename).make_preferred();
-        //If the filename contains a '/' we want to make the directory
+        // If the filename contains a '/' we want to make the directory
         auto directoryPath = fullProcessedPath.parent_path();
         if (!fs::exists(directoryPath)) {
-          //Make the containing directory
+          // Make the containing directory
           std::error_code ec;
           std::filesystem::create_directories(directoryPath, ec);
           if (ec) {
             reportError(L"cannot created directory '{}': {}", directoryPath, ec);
             return E_ABORT;
           }
-          //m_DirectoryPath.mkpath(filename.left(slashPos));
+          // m_DirectoryPath.mkpath(filename.left(slashPos));
         }
-        //If the file already exists, delete it
+        // If the file already exists, delete it
         if (fs::exists(fullProcessedPath)) {
           std::error_code ec;
           if (!fs::remove(fullProcessedPath, ec)) {
@@ -232,27 +227,30 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
       m_OutputFileStream = new MultiOutputStream([this](UInt32 size, UInt64 totalSize) {
         m_ExtractedFileSize += size;
         if (m_ProgressCallback) {
-          m_ProgressCallback(Archive::ProgressType::EXTRACTION, m_ExtractedFileSize, m_TotalFileSize);
+          m_ProgressCallback(Archive::ProgressType::EXTRACTION, m_ExtractedFileSize,
+                             m_TotalFileSize);
         }
       });
       CComPtr<MultiOutputStream> outStreamCom(m_OutputFileStream);
 
       if (!m_OutputFileStream->Open(m_FullProcessedPaths)) {
-        reportError(L"cannot open output file '{}': {}", m_FullProcessedPaths[0], ::GetLastError());
+        reportError(L"cannot open output file '{}': {}", m_FullProcessedPaths[0],
+                    ::GetLastError());
         return E_ABORT;
       }
 
       UInt64 fileSize;
       auto fileSizeFound = getOptionalProperty(index, kpidSize, &fileSize);
       if (fileSizeFound && m_OutputFileStream->SetSize(fileSize) != S_OK) {
-        m_LogCallback(Archive::LogLevel::Error, fmt::format(L"SetSize() failed on {}.", m_FullProcessedPaths[0]));
+        m_LogCallback(Archive::LogLevel::Error,
+                      fmt::format(L"SetSize() failed on {}.", m_FullProcessedPaths[0]));
       }
 
-      //This is messy but I can't find another way of doing it. A simple
-      //assignment of m_outFileStream to *outStream doesn't increase the
-      //reference count.
+      // This is messy but I can't find another way of doing it. A simple
+      // assignment of m_outFileStream to *outStream doesn't increase the
+      // reference count.
       m_OutFileStreamCom = outStreamCom;
-      *outStream = outStreamCom.Detach();
+      *outStream         = outStreamCom.Detach();
     }
 
     if (m_FileChangeCallback) {
@@ -260,10 +258,9 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index, ISequentialOutStre
     }
 
     return S_OK;
-  }
-  catch (std::exception const &e)
-  {
-    m_LogCallback(Archive::LogLevel::Error, fmt::format(L"Caught exception {} in GetStream.", e));
+  } catch (std::exception const& e) {
+    m_LogCallback(Archive::LogLevel::Error,
+                  fmt::format(L"Caught exception {} in GetStream.", e));
   }
   return E_FAIL;
 }
@@ -299,17 +296,17 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
 
   auto guard = m_Timers.SetOperationResult.SetFileAttributesW.instrument();
   if (m_Extracting && m_ProcessedFileInfo.AttribDefined) {
-    //this is moderately annoying. I can't do this on the file handle because if
-    //the file in question is a directory there isn't a file handle.
-    //Also I'd like to convert the attributes to QT attributes but I'm not sure
-    //if that's possible. Hence the conversions and strange string.
-    for (auto &path : m_FullProcessedPaths) {
+    // this is moderately annoying. I can't do this on the file handle because if
+    // the file in question is a directory there isn't a file handle.
+    // Also I'd like to convert the attributes to QT attributes but I'm not sure
+    // if that's possible. Hence the conversions and strange string.
+    for (auto& path : m_FullProcessedPaths) {
       std::wstring const fn = L"\\\\?\\" + path.native();
-      //If the attributes are POSIX-based, fix that
+      // If the attributes are POSIX-based, fix that
       if (m_ProcessedFileInfo.Attrib & 0xF0000000)
         m_ProcessedFileInfo.Attrib &= 0x7FFF;
 
-      //Should probably log any errors here somehow
+      // Should probably log any errors here somehow
       ::SetFileAttributesW(fn.c_str(), m_ProcessedFileInfo.Attrib);
     }
   }
@@ -317,8 +314,7 @@ STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
   return S_OK;
 }
 
-
-STDMETHODIMP CArchiveExtractCallback::CryptoGetTextPassword(BSTR *passwordOut)
+STDMETHODIMP CArchiveExtractCallback::CryptoGetTextPassword(BSTR* passwordOut)
 {
   // if we've already got a password, don't ask again (and again...)
   if (m_Password->empty() && m_PasswordCallback) {
@@ -329,12 +325,10 @@ STDMETHODIMP CArchiveExtractCallback::CryptoGetTextPassword(BSTR *passwordOut)
   return *passwordOut != 0 ? S_OK : E_OUTOFMEMORY;
 }
 
-
 void CArchiveExtractCallback::SetCanceled(bool aCanceled)
 {
   m_Canceled = aCanceled;
 }
-
 
 void CArchiveExtractCallback::reportError(std::wstring const& message)
 {
