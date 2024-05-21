@@ -27,16 +27,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <string>
 
 #ifndef DLLEXPORT
-  #ifdef MODORGANIZER_ARCHIVE_BUILDING
-  #define DLLEXPORT _declspec(dllexport)
-  #else
-  #define DLLEXPORT _declspec(dllimport)
-  #endif
+#ifdef MODORGANIZER_ARCHIVE_BUILDING
+#define DLLEXPORT _declspec(dllexport)
+#else
+#define DLLEXPORT _declspec(dllimport)
+#endif
 #endif
 
-class FileData {
+class FileData
+{
 public:
-
   /**
    * @return the path of this entry in the archive (usually relative, unless the archive
    *   contains absolute path).
@@ -55,7 +55,7 @@ public:
    * @param filepath The filepath to add, relative to the output folder.
    */
   virtual void addOutputFilePath(std::wstring const& filepath) = 0;
-  
+
   /**
    * @brief Retrieve the list of filepaths to extract this entry to.
    *
@@ -68,7 +68,7 @@ public:
    * @brief Clear the list of output file paths for this entry.
    */
   virtual void clearOutputFilePaths() = 0;
-  
+
   /**
    * @return the CRC of this file.
    */
@@ -80,34 +80,44 @@ public:
   virtual bool isDirectory() const = 0;
 };
 
-
-class Archive {
-public: // Declarations
-
-  enum class LogLevel {
+class Archive
+{
+public:  // Declarations
+  enum class LogLevel
+  {
     Debug,
     Info,
     Warning,
     Error
   };
 
-  enum class ProgressType {
-    
-    // Indicates the 7z progression in the archive (related to reading the archive. When extracting 
-    // a lot of files, this may reach 100% way before the extraction is complete since most of the 
-    // time will be spend writing data and not reading it (use EXTRACTION in this case). When 
-    // extracting few small files,  this may be useful for solid archives since most of the time 
-    // will be spent in reading and decompressing the archive rather than in writing the actual files.
+  enum class ProgressType
+  {
+
+    // Indicates the 7z progression in the archive (related to reading the archive. When
+    // extracting
+    // a lot of files, this may reach 100% way before the extraction is complete since
+    // most of the
+    // time will be spend writing data and not reading it (use EXTRACTION in this case).
+    // When
+    // extracting few small files,  this may be useful for solid archives since most of
+    // the time
+    // will be spent in reading and decompressing the archive rather than in writing the
+    // actual files.
     ARCHIVE,
 
-    // Progress about extraction. If this reach 100%, it means that the extraction of all files is 
-    // complete. The EXTRACTION progress may not start immediately, and might be kind of chaotic when
-    // extracting few files from an archive, but is much more representative of the actual progress 
+    // Progress about extraction. If this reach 100%, it means that the extraction of
+    // all files is
+    // complete. The EXTRACTION progress may not start immediately, and might be kind of
+    // chaotic when
+    // extracting few files from an archive, but is much more representative of the
+    // actual progress
     // than ARCHIVE.
     EXTRACTION
   };
 
-  enum class FileChangeType {
+  enum class FileChangeType
+  {
     EXTRACTION_START,
     EXTRACTION_END
   };
@@ -117,16 +127,17 @@ public: // Declarations
   /**
    * List of callbacks:
    */
-  using LogCallback = std::function<void(LogLevel, std::wstring const& log)>;
-  using ProgressCallback = std::function<void(ProgressType, uint64_t, uint64_t)>;
-  using PasswordCallback = std::function<std::wstring()>;
+  using LogCallback        = std::function<void(LogLevel, std::wstring const& log)>;
+  using ProgressCallback   = std::function<void(ProgressType, uint64_t, uint64_t)>;
+  using PasswordCallback   = std::function<std::wstring()>;
   using FileChangeCallback = std::function<void(FileChangeType, std::wstring const&)>;
-  using ErrorCallback = std::function<void(std::wstring const&)>;
+  using ErrorCallback      = std::function<void(std::wstring const&)>;
 
   /**
    *
    */
-  enum class Error {
+  enum class Error
+  {
     ERROR_NONE,
     ERROR_EXTRACT_CANCELLED,
     ERROR_LIBRARY_NOT_FOUND,
@@ -139,20 +150,19 @@ public: // Declarations
     ERROR_OUT_OF_MEMORY
   };
 
-public: // Special member functions:
-
+public:  // Special member functions:
   virtual ~Archive() {}
 
 public:
-
   /**
    * @brief Check if this Archive wrapper is in a valid state.
    *
-   * A non-valid Archive instance usually means that the 7z DLLs could not be loaded properly. Failures
-   * to open or extract archives do not invalidate the Archive, so this should only be used to check
-   * if the Archive object has been initialized properly.
+   * A non-valid Archive instance usually means that the 7z DLLs could not be loaded
+   * properly. Failures to open or extract archives do not invalidate the Archive, so
+   * this should only be used to check if the Archive object has been initialized
+   * properly.
    *
-   * @return true if this instance is valid, false otherwise. 
+   * @return true if this instance is valid, false otherwise.
    */
   virtual bool isValid() const = 0;
 
@@ -174,13 +184,14 @@ public:
    * @brief Open the given archive.
    *
    * @param archivePath Path to the archive to open.
-   * @param passwordCallback Callback to use to ask user for password. This callback must remain
-   *   valid until extraction is complete since some types of archives only requires password when
-   *   extracting.
+   * @param passwordCallback Callback to use to ask user for password. This callback
+   * must remain valid until extraction is complete since some types of archives only
+   * requires password when extracting.
    *
    * @return true if the archive was open properly, false otherwise.
    */
-  virtual bool open(std::wstring const &archivePath, PasswordCallback passwordCallback) = 0;
+  virtual bool open(std::wstring const& archivePath,
+                    PasswordCallback passwordCallback) = 0;
 
   /**
    * @brief Close the currently opened archive.
@@ -195,22 +206,23 @@ public:
   /**
    * @brief Extract the content of the archive.
    *
-   * This function uses the filenames from FileData to obtain the extraction paths of file. All
-   * the callbacks are optional (you can specify default-constructed std::function). Overloads with
-   * one or two callbacks are also provided.
+   * This function uses the filenames from FileData to obtain the extraction paths of
+   * file. All the callbacks are optional (you can specify default-constructed
+   * std::function). Overloads with one or two callbacks are also provided.
    *
-   * @param outputDirectory Path to the directory where the archive should be extracted. If not empty,
-   *   conflicting files will be replaced by the extracted ones.
+   * @param outputDirectory Path to the directory where the archive should be extracted.
+   * If not empty, conflicting files will be replaced by the extracted ones.
    * @param progressCallback Function called to notify extraction progress.
-   * @param fileChangeCallback Function called when the file currently being extracted changes.
+   * @param fileChangeCallback Function called when the file currently being extracted
+   * changes.
    * @param errorCallback Function called when an error occurs.
    *
    * @return true if the archive was extracted, false otherwise.
    */
-  virtual bool extract(std::wstring const &outputDirectory, 
-    ProgressCallback progressCallback,
-    FileChangeCallback fileChangeCallback, 
-    ErrorCallback errorCallback) = 0;
+  virtual bool extract(std::wstring const& outputDirectory,
+                       ProgressCallback progressCallback,
+                       FileChangeCallback fileChangeCallback,
+                       ErrorCallback errorCallback) = 0;
 
   /**
    * @brief Cancel the current extraction process.
@@ -218,31 +230,34 @@ public:
   virtual void cancel() = 0;
 
   // A bunch of useful overloads (with one or two callbacks):
-  bool extract(std::wstring const& outputDirectory, 
-    ErrorCallback errorCallback) {
+  bool extract(std::wstring const& outputDirectory, ErrorCallback errorCallback)
+  {
     return extract(outputDirectory, {}, {}, errorCallback);
   }
-  bool extract(std::wstring const& outputDirectory,
-    ProgressCallback progressCallback) {
+  bool extract(std::wstring const& outputDirectory, ProgressCallback progressCallback)
+  {
     return extract(outputDirectory, progressCallback, {}, {});
   }
   bool extract(std::wstring const& outputDirectory,
-    FileChangeCallback fileChangeCallback) {
+               FileChangeCallback fileChangeCallback)
+  {
     return extract(outputDirectory, {}, fileChangeCallback, {});
   }
-  bool extract(std::wstring const& outputDirectory, 
-    ProgressCallback progressCallback, ErrorCallback errorCallback) {
+  bool extract(std::wstring const& outputDirectory, ProgressCallback progressCallback,
+               ErrorCallback errorCallback)
+  {
     return extract(outputDirectory, progressCallback, {}, errorCallback);
   }
-  bool extract(std::wstring const& outputDirectory,
-    ProgressCallback progressCallback, FileChangeCallback fileChangeCallback) {
+  bool extract(std::wstring const& outputDirectory, ProgressCallback progressCallback,
+               FileChangeCallback fileChangeCallback)
+  {
     return extract(outputDirectory, progressCallback, fileChangeCallback, {});
   }
   bool extract(std::wstring const& outputDirectory,
-    FileChangeCallback fileChangeCallback, ErrorCallback errorCallback) {
+               FileChangeCallback fileChangeCallback, ErrorCallback errorCallback)
+  {
     return extract(outputDirectory, {}, fileChangeCallback, errorCallback);
   }
-
 };
 
 /**
@@ -252,5 +267,4 @@ public:
  */
 DLLEXPORT std::unique_ptr<Archive> CreateArchive();
 
-
-#endif // ARCHIVE_H
+#endif  // ARCHIVE_H

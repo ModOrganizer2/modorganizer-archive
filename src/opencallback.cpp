@@ -18,34 +18,29 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <Unknwn.h>
 #include "opencallback.h"
+#include <Unknwn.h>
 
 #include "inputstream.h"
 #include "propertyvariant.h"
 
 #include <atlbase.h>
 
+#include <format>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
 
 #include "fileio.h"
 
-#include <fmt/format.h>
-#include <fmt/xchar.h>
-
 #define UNUSED(x)
 
-CArchiveOpenCallback::CArchiveOpenCallback(
-  Archive::PasswordCallback passwordCallback,
-  Archive::LogCallback logCallback,
-  std::filesystem::path const& filepath)
-  : m_PasswordCallback(passwordCallback)
-  , m_LogCallback(logCallback)
-  , m_Path(filepath)
-  , m_SubArchiveMode(false)
+CArchiveOpenCallback::CArchiveOpenCallback(Archive::PasswordCallback passwordCallback,
+                                           Archive::LogCallback logCallback,
+                                           std::filesystem::path const& filepath)
+    : m_PasswordCallback(passwordCallback), m_LogCallback(logCallback),
+      m_Path(filepath), m_SubArchiveMode(false)
 {
   if (!exists(filepath)) {
     throw std::runtime_error("invalid archive path");
@@ -57,12 +52,14 @@ CArchiveOpenCallback::CArchiveOpenCallback(
 }
 
 /* -------------------- IArchiveOpenCallback -------------------- */
-STDMETHODIMP CArchiveOpenCallback::SetTotal(const UInt64 *UNUSED(files), const UInt64 *UNUSED(bytes))
+STDMETHODIMP CArchiveOpenCallback::SetTotal(const UInt64* UNUSED(files),
+                                            const UInt64* UNUSED(bytes))
 {
   return S_OK;
 }
 
-STDMETHODIMP CArchiveOpenCallback::SetCompleted(const UInt64 *UNUSED(files), const UInt64 *UNUSED(bytes))
+STDMETHODIMP CArchiveOpenCallback::SetCompleted(const UInt64* UNUSED(files),
+                                                const UInt64* UNUSED(bytes))
 {
   return S_OK;
 }
@@ -77,14 +74,14 @@ STDMETHODIMP CArchiveOpenCallback::CryptoGetTextPassword(BSTR* passwordOut)
   if (!m_PasswordCallback) {
     return E_ABORT;
   }
-  m_Password = m_PasswordCallback();
+  m_Password   = m_PasswordCallback();
   *passwordOut = ::SysAllocString(m_Password.c_str());
   return *passwordOut != 0 ? S_OK : E_OUTOFMEMORY;
 }
 
 /* -------------------- IArchiveOpenSetSubArchiveName -------------------- */
 /* I don't know what this does or how you call it. */
-STDMETHODIMP CArchiveOpenCallback::SetSubArchiveName(const wchar_t *name)
+STDMETHODIMP CArchiveOpenCallback::SetSubArchiveName(const wchar_t* name)
 {
   m_SubArchiveMode = true;
   m_SubArchiveName = name;
@@ -93,36 +90,50 @@ STDMETHODIMP CArchiveOpenCallback::SetSubArchiveName(const wchar_t *name)
 
 /* -------------------- IArchiveOpenVolumeCallback -------------------- */
 
-STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT *value)
+STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT* value)
 {
-  //A scan of the source code indicates that the only things that ever call the
-  //IArchiveOpenVolumeCallback interface ask for the file name and size.
-  PropertyVariant &prop = *static_cast<PropertyVariant*>(value);
+  // A scan of the source code indicates that the only things that ever call the
+  // IArchiveOpenVolumeCallback interface ask for the file name and size.
+  PropertyVariant& prop = *static_cast<PropertyVariant*>(value);
 
   switch (propID) {
-    case kpidName: {
-      if (m_SubArchiveMode) {
-        prop = m_SubArchiveName;
-      } else {
-        // Note: Need to call .native(), otherwize we get a link error because we try to
-        // assign a fs::path to the variant.
-        prop = m_Path.filename().native();
-      }
-    } break;
+  case kpidName: {
+    if (m_SubArchiveMode) {
+      prop = m_SubArchiveName;
+    } else {
+      // Note: Need to call .native(), otherwize we get a link error because we try to
+      // assign a fs::path to the variant.
+      prop = m_Path.filename().native();
+    }
+  } break;
 
-    case kpidIsDir:  prop = m_FileInfo.isDir(); break;
-    case kpidSize:   prop = m_FileInfo.fileSize(); break;
-    case kpidAttrib: prop = m_FileInfo.fileAttributes(); break;
-    case kpidCTime:  prop = m_FileInfo.creationTime(); break;
-    case kpidATime:  prop = m_FileInfo.lastAccessTime(); break;
-    case kpidMTime:  prop = m_FileInfo.lastWriteTime(); break;
+  case kpidIsDir:
+    prop = m_FileInfo.isDir();
+    break;
+  case kpidSize:
+    prop = m_FileInfo.fileSize();
+    break;
+  case kpidAttrib:
+    prop = m_FileInfo.fileAttributes();
+    break;
+  case kpidCTime:
+    prop = m_FileInfo.creationTime();
+    break;
+  case kpidATime:
+    prop = m_FileInfo.lastAccessTime();
+    break;
+  case kpidMTime:
+    prop = m_FileInfo.lastWriteTime();
+    break;
 
-    default: m_LogCallback(Archive::LogLevel::Warning, fmt::format(L"Unexpected property {}.", propID));
+  default:
+    m_LogCallback(Archive::LogLevel::Warning,
+                  std::format(L"Unexpected property {}.", propID));
   }
   return S_OK;
 }
 
-STDMETHODIMP CArchiveOpenCallback::GetStream(const wchar_t *name, IInStream **inStream)
+STDMETHODIMP CArchiveOpenCallback::GetStream(const wchar_t* name, IInStream** inStream)
 {
   *inStream = nullptr;
 

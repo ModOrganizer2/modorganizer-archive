@@ -18,8 +18,8 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include <Unknwn.h>
 #include "multioutputstream.h"
+#include <Unknwn.h>
 
 #include <fcntl.h>
 #include <io.h>
@@ -39,14 +39,14 @@ static inline HRESULT ConvertBoolToHRESULT(bool result)
 //////////////////////////
 // MultiOutputStream
 
-MultiOutputStream::MultiOutputStream(WriteCallback callback) :
-  m_WriteCallback(callback) {}
+MultiOutputStream::MultiOutputStream(WriteCallback callback) : m_WriteCallback(callback)
+{}
 
-MultiOutputStream::~MultiOutputStream() { }
+MultiOutputStream::~MultiOutputStream() {}
 
 HRESULT MultiOutputStream::Close()
 {
-  for (auto& file: m_Files) {
+  for (auto& file : m_Files) {
     file.Close();
   }
   return S_OK;
@@ -55,9 +55,9 @@ HRESULT MultiOutputStream::Close()
 bool MultiOutputStream::Open(std::vector<std::filesystem::path> const& filepaths)
 {
   m_ProcessedSize = 0;
-  bool ok = true;
+  bool ok         = true;
   m_Files.clear();
-  for (auto &path: filepaths) {
+  for (auto& path : filepaths) {
     m_Files.emplace_back();
     if (!m_Files.back().Open(path.native())) {
       ok = false;
@@ -66,10 +66,11 @@ bool MultiOutputStream::Open(std::vector<std::filesystem::path> const& filepaths
   return ok;
 }
 
-STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *processedSize)
+STDMETHODIMP MultiOutputStream::Write(const void* data, UInt32 size,
+                                      UInt32* processedSize)
 {
   bool update_processed(true);
-  for (auto &file : m_Files) {
+  for (auto& file : m_Files) {
     UInt32 realProcessedSize;
     if (!file.Write(data, size, realProcessedSize)) {
       return ConvertBoolToHRESULT(false);
@@ -88,7 +89,8 @@ STDMETHODIMP MultiOutputStream::Write(const void *data, UInt32 size, UInt32 *pro
   return S_OK;
 }
 
-STDMETHODIMP MultiOutputStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64* newPosition)
+STDMETHODIMP MultiOutputStream::Seek(Int64 offset, UInt32 seekOrigin,
+                                     UInt64* newPosition)
 {
   if (seekOrigin >= 3)
     return STG_E_INVALIDFUNCTION;
@@ -125,9 +127,9 @@ HRESULT MultiOutputStream::GetSize(UInt64* size)
   return ConvertBoolToHRESULT(m_Files[0].GetLength(*size));
 }
 
-bool MultiOutputStream::SetMTime(FILETIME const *mTime)
+bool MultiOutputStream::SetMTime(FILETIME const* mTime)
 {
-  for (auto &file : m_Files) {
+  for (auto& file : m_Files) {
     file.SetMTime(mTime);
   }
   return true;

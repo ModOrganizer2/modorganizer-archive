@@ -26,18 +26,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 /**
  * Very small wrapper around Windows DLLs functions.
  */
-class ALibrary {
+class ALibrary
+{
 public:
-
-  ALibrary(const char* path) : 
-    m_Module{ nullptr }, m_LastError{ ERROR_SUCCESS } {
+  ALibrary(const char* path) : m_Module{nullptr}, m_LastError{ERROR_SUCCESS}
+  {
     m_Module = LoadLibraryA(path);
     if (m_Module == nullptr) {
       updateLastError();
     }
   }
 
-  ~ALibrary() {
+  ~ALibrary()
+  {
     if (m_Module) {
       FreeLibrary(m_Module);
     }
@@ -52,7 +53,8 @@ public:
    * @note T must be a pointer type, and no type checking is performed.
    */
   template <class T>
-  T resolve(const char* procName) {
+  T resolve(const char* procName)
+  {
     if (!m_Module) {
       return nullptr;
     }
@@ -68,14 +70,13 @@ public:
    * @return the last error that occurs with this object, or ERROR_SUCCESS if no
    *     error occurred.
    */
-  DWORD getLastError() const {
-    return m_LastError;
-  }
+  DWORD getLastError() const { return m_LastError; }
 
   /**
    * @return true if this library is open, false otherwize.
    */
-  bool isOpen() const {
+  bool isOpen() const
+  {
     // Note: The library is always open, unless it fails during construction.
     return m_Module != nullptr;
   }
@@ -83,14 +84,10 @@ public:
   operator bool() const { return isOpen(); }
 
 private:
-
-  void updateLastError() {
-    m_LastError = ::GetLastError();
-  }
+  void updateLastError() { m_LastError = ::GetLastError(); }
 
   HMODULE m_Module;
   DWORD m_LastError;
-
 };
 
 #endif
