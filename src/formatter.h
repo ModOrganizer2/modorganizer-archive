@@ -25,61 +25,54 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 // exposed outside of the library. It also contains some useful methods for
 // string manipulation.
 
-#include <fmt/format.h>
+#include <format>
 
 #include <cwctype>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
 
-// Specializing fmt::formatter works, but gives warning, for whatever reason... So
-// putting everything in the namespace.
-namespace fmt
-{
-
-// I don't know why fmt does not provide this...
 template <>
-struct formatter<std::string, wchar_t> : formatter<std::wstring, wchar_t>
+struct std::formatter<std::string, wchar_t> : std::formatter<std::wstring, wchar_t>
 {
   template <typename FormatContext>
-  auto format(std::string const& s, FormatContext& ctx)
+  auto format(std::string const& s, FormatContext& ctx) const
   {
-    return formatter<std::wstring, wchar_t>::format(std::wstring(s.begin(), s.end()),
-                                                    ctx);
+    return std::formatter<std::wstring, wchar_t>::format(
+        std::wstring(s.begin(), s.end()), ctx);
   }
 };
 
 template <>
-struct formatter<std::exception, wchar_t> : formatter<std::string, wchar_t>
+struct std::formatter<std::exception, wchar_t> : std::formatter<std::string, wchar_t>
 {
   template <typename FormatContext>
-  auto format(std::exception const& ex, FormatContext& ctx)
+  auto format(std::exception const& ex, FormatContext& ctx) const
   {
-    return formatter<std::string, wchar_t>::format(ex.what(), ctx);
+    return std::formatter<std::string, wchar_t>::format(ex.what(), ctx);
   }
 };
 
 template <>
-struct formatter<std::error_code, wchar_t> : formatter<std::string, wchar_t>
+struct std::formatter<std::error_code, wchar_t> : std::formatter<std::string, wchar_t>
 {
   template <typename FormatContext>
-  auto format(std::error_code const& ec, FormatContext& ctx)
+  auto format(std::error_code const& ec, FormatContext& ctx) const
   {
-    return formatter<std::string, wchar_t>::format(ec.message(), ctx);
+    return std::formatter<std::string, wchar_t>::format(ec.message(), ctx);
   }
 };
 
 template <>
-struct formatter<std::filesystem::path, wchar_t> : formatter<std::wstring, wchar_t>
+struct std::formatter<std::filesystem::path, wchar_t>
+    : std::formatter<std::wstring, wchar_t>
 {
   template <typename FormatContext>
-  auto format(std::filesystem::path const& path, FormatContext& ctx)
+  auto format(std::filesystem::path const& path, FormatContext& ctx) const
   {
-    return formatter<std::wstring, wchar_t>::format(path.native(), ctx);
+    return std::formatter<std::wstring, wchar_t>::format(path.native(), ctx);
   }
 };
-
-}  // namespace fmt
 
 namespace ArchiveStrings
 {

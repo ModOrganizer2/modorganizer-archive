@@ -301,7 +301,7 @@ ArchiveImpl::ArchiveImpl()
     m_Valid = true;
     return;
   } catch (std::exception const& e) {
-    m_LogCallback(LogLevel::Error, fmt::format(L"Caught exception {}.", e));
+    m_LogCallback(LogLevel::Error, std::format(L"Caught exception {}.", e));
     m_LastError = Error::ERROR_LIBRARY_INVALID;
   }
 }
@@ -371,12 +371,12 @@ bool ArchiveImpl::open(std::wstring const& archiveName,
 
         if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
           m_LogCallback(LogLevel::Debug,
-                        fmt::format(L"Failed to open {} using {} (from signature).",
+                        std::format(L"Failed to open {} using {} (from signature).",
                                     archiveName, signatureInfo.second.m_Name));
           m_ArchivePtr.Release();
         } else {
           m_LogCallback(LogLevel::Debug,
-                        fmt::format(L"Opened {} using {} (from signature).",
+                        std::format(L"Opened {} using {} (from signature).",
                                     archiveName, signatureInfo.second.m_Name));
 
           // Retrieve the extension (warning: .extension() contains the dot):
@@ -433,12 +433,12 @@ bool ArchiveImpl::open(std::wstring const& archiveName,
 
             if (m_ArchivePtr->Open(file, 0, openCallbackPtr) != S_OK) {
               m_LogCallback(LogLevel::Debug,
-                            fmt::format(L"Failed to open {} using {} (from signature).",
+                            std::format(L"Failed to open {} using {} (from signature).",
                                         archiveName, format.m_Name));
               m_ArchivePtr.Release();
             } else {
               m_LogCallback(LogLevel::Debug,
-                            fmt::format(L"Opened {} using {} (from signature).",
+                            std::format(L"Opened {} using {} (from signature).",
                                         archiveName, format.m_Name));
               break;
             }
@@ -457,7 +457,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName,
           }
           m_LogCallback(
               LogLevel::Warning,
-              fmt::format(L"The format(s) expected for this extension are: {}.",
+              std::format(L"The format(s) expected for this extension are: {}.",
                           ArchiveStrings::join(vformats, L", ")));
         }
       }
@@ -478,7 +478,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName,
       }
       if (m_ArchivePtr->Open(file, 0, openCallbackPtr) == S_OK) {
         m_LogCallback(LogLevel::Debug,
-                      fmt::format(L"Opened {} using {} (from signature).", archiveName,
+                      std::format(L"Opened {} using {} (from signature).", archiveName,
                                   format.m_Name));
         m_LogCallback(LogLevel::Warning,
                       L"This archive likely has an incorrect extension.");

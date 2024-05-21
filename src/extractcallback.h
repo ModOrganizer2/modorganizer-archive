@@ -24,14 +24,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <format>
 
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
 
 #include <atlbase.h>
-
-#include <fmt/format.h>
-#include <fmt/xchar.h>
 
 #include "archive.h"
 #include "formatter.h"
@@ -73,9 +71,9 @@ private:
   void reportError(const std::wstring& message);
 
   template <class... Args>
-  void reportError(const wchar_t* format, Args&&... args)
+  void reportError(std::wformat_string<Args...> format, Args&&... args)
   {
-    reportError(fmt::format(format, std::forward<Args>(args)...));
+    reportError(std::format(format, std::forward<Args>(args)...));
   }
 
   template <typename T>

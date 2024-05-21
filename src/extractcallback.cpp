@@ -20,16 +20,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <Unknwn.h>
 
-#include <fmt/format.h>
-#include <fmt/xchar.h>
+#include <filesystem>
+#include <format>
+#include <stdexcept>
+#include <string>
 
 #include "archive.h"
 #include "extractcallback.h"
 #include "propertyvariant.h"
-
-#include <filesystem>
-#include <stdexcept>
-#include <string>
 
 std::wstring operationResultToString(Int32 operationResult)
 {
@@ -67,7 +65,7 @@ std::wstring operationResultToString(Int32 operationResult)
     return L"Wrong password";
 
   default:
-    return fmt::format(L"Unknown error {}", operationResult);
+    return std::format(L"Unknown error {}", operationResult);
   }
 }
 
@@ -127,7 +125,7 @@ bool CArchiveExtractCallback::getOptionalProperty(UInt32 index, int property,
   PropertyVariant prop;
   if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
     m_LogCallback(Archive::LogLevel::Error,
-                  fmt::format(L"Error getting property {}.", property));
+                  std::format(L"Error getting property {}.", property));
     return false;
   }
   if (prop.is_empty()) {
@@ -143,7 +141,7 @@ bool CArchiveExtractCallback::getProperty(UInt32 index, int property, T* result)
   PropertyVariant prop;
   if (m_ArchiveHandler->GetProperty(index, property, &prop) != S_OK) {
     m_LogCallback(Archive::LogLevel::Error,
-                  fmt::format(L"Error getting property {}.", property));
+                  std::format(L"Error getting property {}.", property));
     return false;
   }
 
@@ -243,7 +241,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index,
       auto fileSizeFound = getOptionalProperty(index, kpidSize, &fileSize);
       if (fileSizeFound && m_OutputFileStream->SetSize(fileSize) != S_OK) {
         m_LogCallback(Archive::LogLevel::Error,
-                      fmt::format(L"SetSize() failed on {}.", m_FullProcessedPaths[0]));
+                      std::format(L"SetSize() failed on {}.", m_FullProcessedPaths[0]));
       }
 
       // This is messy but I can't find another way of doing it. A simple
@@ -260,7 +258,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index,
     return S_OK;
   } catch (std::exception const& e) {
     m_LogCallback(Archive::LogLevel::Error,
-                  fmt::format(L"Caught exception {} in GetStream.", e));
+                  std::format(L"Caught exception {} in GetStream.", e));
   }
   return E_FAIL;
 }

@@ -22,8 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #define ARCHIVE_INSTRUMENT_H
 
 #include <chrono>
-
-#include <fmt/format.h>
+#include <format>
 
 namespace ArchiveTimers
 {
@@ -87,7 +86,7 @@ public:
     auto ms = [](auto&& t) {
       return std::chrono::duration<double, std::milli>(t);
     };
-    return fmt::format(
+    return std::format(
         L"Instrument '{}': {} calls, total of {}ms, {:.3f}ms per call on average.",
         name, ncalls, ms(time).count(), ms(time).count() / ncalls);
   }

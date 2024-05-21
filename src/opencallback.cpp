@@ -26,15 +26,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <atlbase.h>
 
+#include <format>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "fileio.h"
-
-#include <fmt/format.h>
-#include <fmt/xchar.h>
 
 #define UNUSED(x)
 
@@ -130,7 +128,7 @@ STDMETHODIMP CArchiveOpenCallback::GetProperty(PROPID propID, PROPVARIANT* value
 
   default:
     m_LogCallback(Archive::LogLevel::Warning,
-                  fmt::format(L"Unexpected property {}.", propID));
+                  std::format(L"Unexpected property {}.", propID));
   }
   return S_OK;
 }
