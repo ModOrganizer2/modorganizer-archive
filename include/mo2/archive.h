@@ -26,12 +26,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #include <memory>
 #include <string>
 
-#ifndef DLLEXPORT
-#ifdef MODORGANIZER_ARCHIVE_BUILDING
+#if defined(MO2_ARCHIVE_BUILD_STATIC)
+#define DLLEXPORT
+#elif defined(MO2_ARCHIVE_BUILD_EXPORT)
 #define DLLEXPORT _declspec(dllexport)
 #else
 #define DLLEXPORT _declspec(dllimport)
-#endif
 #endif
 
 class FileData
@@ -78,6 +78,8 @@ public:
    * @return true if this entry is a directory, false otherwize.
    */
   virtual bool isDirectory() const = 0;
+
+  virtual ~FileData() = default;
 };
 
 class Archive
