@@ -51,14 +51,13 @@
       "name": "vs2022-windows-static"
     },
     {
-      "inherits": "vs2022-windows-shared",
+      "inherits": "vs2022-windows-static",
       "name": "vs2022-windows"
     }
   ],
   "buildPresets": [
     {
       "name": "vs2022-windows",
-      "resolvePackageReferences": "on",
       "configurePreset": "vs2022-windows"
     }
   ],
