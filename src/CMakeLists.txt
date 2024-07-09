@@ -35,9 +35,10 @@ target_sources(archive
 	PUBLIC
 		FILE_SET HEADERS
 		BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/../include
-		FILES ${CMAKE_CURRENT_LIST_DIR}/../include/mo2/archive.h
+		FILES ${CMAKE_CURRENT_LIST_DIR}/../include/archive/archive.h
 )
-target_include_directories(archive PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include/mo2)
+
+target_include_directories(archive PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include/archive)
 
 if (MSVC)
 	target_compile_options(archive
@@ -60,6 +61,8 @@ if (BUILD_STATIC)
 else()
 	target_compile_definitions(archive PRIVATE -DMO2_ARCHIVE_BUILD_EXPORT)
 endif()
+
+add_library(mo2::archive ALIAS archive)
 
 install(TARGETS archive EXPORT archiveTargets FILE_SET HEADERS)
 if (NOT BUILD_STATIC)
