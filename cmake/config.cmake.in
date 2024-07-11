@@ -3,20 +3,3 @@
 find_package(7zip CONFIG REQUIRED)
 
 include ( "${CMAKE_CURRENT_LIST_DIR}/mo2-archive-targets.cmake" )
-
-list(FIND _ARCHIVE_CONFIGURATIONS "RELEASE" _ARCHIVE_HAS_RELEASE)
-if (_ARCHIVE_HAS_RELEASE EQUAL -1)
-    set_target_properties(mo2::archive PROPERTIES
-        MAP_IMPORTED_CONFIG_MINSIZEREL RelWithDebInfo
-        MAP_IMPORTED_CONFIG_RELEASE    RelWithDebInfo
-    )
-    set_property(TARGET mo2::archive APPEND PROPERTY IMPORTED_CONFIGURATIONS MINSIZEREL)
-    set_property(TARGET mo2::archive APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-else()
-    set_target_properties(mo2::archive PROPERTIES
-        MAP_IMPORTED_CONFIG_MINSIZEREL      Release
-        MAP_IMPORTED_CONFIG_RELWITHDEBINFO  Release
-    )
-    set_property(TARGET mo2::archive APPEND PROPERTY IMPORTED_CONFIGURATIONS MINSIZEREL)
-    set_property(TARGET mo2::archive APPEND PROPERTY IMPORTED_CONFIGURATIONS RELWITHDEBINFO)
-endif()
