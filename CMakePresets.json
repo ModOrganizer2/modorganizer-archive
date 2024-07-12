@@ -33,32 +33,34 @@
         "VCPKG_TARGET_TRIPLET": {
           "type": "STRING",
           "value": "x64-windows-static-md"
+        },
+        "BUILD_SHARED_LIBS": {
+          "type": "BOOL",
+          "value": "OFF"
         }
       },
       "generator": "Visual Studio 17 2022",
       "inherits": ["cmake-dev", "vcpkg"],
-      "name": "vs2022-windows-shared",
+      "name": "vs2022-windows-static",
       "toolset": "v143"
     },
     {
       "cacheVariables": {
-        "BUILD_STATIC": {
+        "BUILD_SHARED_LIBS": {
           "type": "BOOL",
           "value": "ON"
+        },
+        "VCPKG_TARGET_TRIPLET": {
+          "type": "STRING",
+          "value": "x64-windows"
         }
       },
-      "inherits": "vs2022-windows-shared",
-      "name": "vs2022-windows-static"
+      "inherits": "vs2022-windows-static",
+      "name": "vs2022-windows-shared"
     },
     {
-      "inherits": "vs2022-windows-static",
+      "inherits": "vs2022-windows-shared",
       "name": "vs2022-windows"
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "vs2022-windows",
-      "configurePreset": "vs2022-windows"
     }
   ],
   "version": 4

@@ -5,7 +5,7 @@ include(CMakePackageConfigHelpers)
 project(archive)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-option(BUILD_STATIC "build static library" OFF)
+option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 
 add_subdirectory(src)
 

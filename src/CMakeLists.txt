@@ -2,11 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 find_package(7zip CONFIG REQUIRED)
 
-if (BUILD_STATIC)
-	add_library(archive STATIC)
-else()
-	add_library(archive SHARED)
-endif()
+add_library(archive)
 
 set_target_properties(archive PROPERTIES CXX_STANDARD 20)
 target_link_libraries(archive PRIVATE 7zip::7zip)
@@ -44,7 +40,7 @@ if (MSVC)
 	target_compile_options(archive
 		PRIVATE
 		"/MP"
-		"/Wall"
+		"/W4"
 		"/external:anglebrackets"
 		"/external:W0"
 	)
