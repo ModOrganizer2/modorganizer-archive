@@ -98,7 +98,7 @@ STDMETHODIMP MultiOutputStream::Seek(Int64 offset, UInt32 seekOrigin,
   bool result = true;
   for (auto& file : m_Files) {
     UInt64 realNewPosition;
-    bool result = file.Seek(offset, seekOrigin, realNewPosition);
+    result = file.Seek(offset, seekOrigin, realNewPosition);
     if (newPosition)
       *newPosition = realNewPosition;
   }
@@ -112,9 +112,9 @@ STDMETHODIMP MultiOutputStream::SetSize(UInt64 newSize)
     UInt64 currentPos;
     if (!file.Seek(0, FILE_CURRENT, currentPos))
       return E_FAIL;
-    bool result = file.SetLength(newSize);
+    bool cresult = file.SetLength(newSize);
     UInt64 currentPos2;
-    result = result && file.Seek(currentPos, currentPos2);
+    result = result && cresult && file.Seek(currentPos, currentPos2);
   }
   return result ? S_OK : E_FAIL;
 }

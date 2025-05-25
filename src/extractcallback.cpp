@@ -104,13 +104,13 @@ CArchiveExtractCallback::~CArchiveExtractCallback()
 #endif
 }
 
-STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size)
+STDMETHODIMP CArchiveExtractCallback::SetTotal(UInt64 size) throw()
 {
   m_Total = size;
   return S_OK;
 }
 
-STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64* completed)
+STDMETHODIMP CArchiveExtractCallback::SetCompleted(const UInt64* completed) throw()
 {
   if (m_ProgressCallback) {
     m_ProgressCallback(Archive::ProgressType::ARCHIVE, *completed, m_Total);
@@ -151,7 +151,7 @@ bool CArchiveExtractCallback::getProperty(UInt32 index, int property, T* result)
 
 STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index,
                                                 ISequentialOutStream** outStream,
-                                                Int32 askExtractMode)
+                                                Int32 askExtractMode) throw()
 {
   auto guard   = m_Timers.GetStream.instrument();
   namespace fs = std::filesystem;
@@ -222,7 +222,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index,
         m_FullProcessedPaths.push_back(fullProcessedPath);
       }
 
-      m_OutputFileStream = new MultiOutputStream([this](UInt32 size, UInt64 totalSize) {
+      m_OutputFileStream = new MultiOutputStream([this](UInt32 size, UInt64) {
         m_ExtractedFileSize += size;
         if (m_ProgressCallback) {
           m_ProgressCallback(Archive::ProgressType::EXTRACTION, m_ExtractedFileSize,
@@ -263,7 +263,7 @@ STDMETHODIMP CArchiveExtractCallback::GetStream(UInt32 index,
   return E_FAIL;
 }
 
-STDMETHODIMP CArchiveExtractCallback::PrepareOperation(Int32 askExtractMode)
+STDMETHODIMP CArchiveExtractCallback::PrepareOperation(Int32 askExtractMode) throw()
 {
   if (m_Canceled) {
     return E_ABORT;
@@ -272,7 +272,7 @@ STDMETHODIMP CArchiveExtractCallback::PrepareOperation(Int32 askExtractMode)
   return S_OK;
 }
 
-STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult)
+STDMETHODIMP CArchiveExtractCallback::SetOperationResult(Int32 operationResult) throw()
 {
   if (operationResult != NArchive::NExtract::NOperationResult::kOK) {
     reportError(operationResultToString(operationResult));
