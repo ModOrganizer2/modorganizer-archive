@@ -63,5 +63,12 @@
       "name": "vs2022-windows"
     }
   ],
+  "buildPresets": [
+    {
+      "name": "vs2022-windows",
+      "resolvePackageReferences": "on",
+      "configurePreset": "vs2022-windows"
+    }
+  ],
   "version": 4
 }
