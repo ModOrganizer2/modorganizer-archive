@@ -2,33 +2,29 @@ name: Build Archive
 
 on:
   push:
-    branches: master
+    branches: [master]
   pull_request:
     types: [opened, synchronize, reopened]
 
 env:
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_BINARY_SOURCES: clear;x-azblob,${{ vars.AZ_BLOB_VCPKG_URL }},${{ secrets.AZ_BLOB_SAS }},readwrite
 
 jobs:
   build:
     runs-on: windows-2022
     steps:
-      # https://learn.microsoft.com/en-us/vcpkg/consume/binary-caching-github-actions-cache
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      # set VCPKG Root
+      - name: "Set environmental variables"
+        shell: bash
+        run: |
+          echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
       - uses: actions/checkout@v4
-      - uses: lukka/run-vcpkg@v11
 
       - name: Configure Archive build
         shell: pwsh
         run: |
-          cmake --preset vs2022-windows-shared `
-            "-DCMAKE_INSTALL_PREFIX=install"
+          cmake --preset vs2022-windows-shared "-DCMAKE_INSTALL_PREFIX=install"
 
       - name: Build Archive
         run: cmake --build vsbuild --config RelWithDebInfo
