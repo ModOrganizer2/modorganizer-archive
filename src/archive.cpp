@@ -269,7 +269,7 @@ HRESULT ArchiveImpl::loadFormats()
 }
 
 ArchiveImpl::ArchiveImpl()
-    : m_Valid(false), m_LastError(Error::ERROR_NONE), m_Library("dlls/7z"),
+    : m_Valid(false), m_LastError(Error::ERROR_NONE), m_Library("dlls/7zip.dll"),
       m_PasswordCallback{}
 {
   // Reset the log callback:
@@ -342,7 +342,7 @@ bool ArchiveImpl::open(std::wstring const& archiveName,
   try {
     openCallbackPtr =
         new CArchiveOpenCallback(passwordCallback, m_LogCallback, filepath);
-  } catch (std::runtime_error const& ex) {
+  } catch (std::runtime_error const&) {
     m_LastError = Error::ERROR_FAILED_TO_OPEN_ARCHIVE;
     return false;
   }
@@ -568,7 +568,7 @@ bool ArchiveImpl::extract(std::wstring const& outputDirectory,
   for (std::size_t i = 0; i < m_FileList.size(); ++i) {
     FileDataImpl* fileData = static_cast<FileDataImpl*>(m_FileList[i]);
     if (!fileData->isEmpty()) {
-      indices.push_back(i);
+      indices.push_back(static_cast<UInt32>(i));
       totalSize += fileData->getSize();
     }
   }
